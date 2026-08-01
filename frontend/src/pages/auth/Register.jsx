@@ -12,10 +12,19 @@ export default function Register() {
   })
   const [loading, setLoading] = useState(false)
 
+  const validate = () => {
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!form.full_name.trim()) return 'Full name is required'
+    if (!form.email || !emailRe.test(form.email)) return 'Please enter a valid email address'
+    if (form.password.length < 8) return 'Password must be at least 8 characters'
+    if (!form.roll_number.trim()) return 'Roll number is required'
+    return null
+  }
+
   const handle = async (e) => {
     e.preventDefault()
-    if (!form.email || !form.password || !form.roll_number || !form.full_name)
-      return toast.error('Please fill all required fields')
+    const err = validate()
+    if (err) return toast.error(err)
     setLoading(true)
     try {
       await authAPI.registerStudent({ ...form, semester: Number(form.semester), year: Number(form.year) })
@@ -34,11 +43,11 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4 py-10">
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-500/20">
-            <span className="text-white font-bold text-xl">E</span>
+          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg p-1.5">
+            <img src="/logo.png" alt="Aklank College" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Student Registration</h2>
-          <p className="text-gray-400 dark:text-gray-500 mt-1.5 text-sm">Create your student account to get started</p>
+          <p className="text-gray-400 dark:text-gray-500 mt-1.5 text-sm">Aklank Girls P.G. College, Kota — Student Portal</p>
         </div>
         <div className="card">
           <form onSubmit={handle}>

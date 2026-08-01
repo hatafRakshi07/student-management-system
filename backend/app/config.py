@@ -1,29 +1,41 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from functools import lru_cache
 import os
+import warnings
+
+_DEFAULT_SECRET = "supersecretkey-change-in-production-min32chars!!"
 
 
 class Settings(BaseSettings):
     app_name: str = "Student Management System"
     app_version: str = "1.0.0"
-    debug: bool = True
+    debug: bool = False
 
     # Security
-    secret_key: str = "supersecretkey-change-in-production-min32chars!!"
+    secret_key: str = _DEFAULT_SECRET
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
 
-    # Database — defaults to SQLite (no MySQL required for local dev)
-    # Set DATABASE_URL env var to use MySQL:
-    #   mysql+pymysql://root:password@localhost:3306/student_management?charset=utf8mb4
+    @model_validator(mode="after")
+    def warn_insecure_defaults(self) -> "Settings":
+        if self.secret_key == _DEFAULT_SECRET:
+            warnings.warn(
+                "SECURITY: Using the default SECRET_KEY. "
+                "Set a strong SECRET_KEY in your .env file before deploying.",
+                UserWarning,
+                stacklevel=2,
+            )
+        return self
+
+    # Database
+    # Local SQLite (default):   sqlite:///./student_management.db
+    # Supabase PostgreSQL:      postgresql+psycopg2://postgres.[project-ref]:[password]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
     database_url: str = "sqlite:///./student_management.db"
 
-    # Legacy MySQL fields (used only when building MySQL URL manually)
-    db_host: str = "localhost"
-    db_port: int = 3306
-    db_user: str = "root"
-    db_password: str = ""
-    db_name: str = "student_management"
+    # Supabase (optional — used by storage/realtime helpers)
+    supabase_url: str = ""
+    supabase_service_key: str = ""  # service_role key — never expose to frontend
 
     # Email (SMTP)
     smtp_host: str = "smtp.gmail.com"

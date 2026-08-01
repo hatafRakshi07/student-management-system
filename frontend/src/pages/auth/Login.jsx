@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
-import { Eye, EyeOff, School, Moon, Sun, GraduationCap, BookOpen, BarChart3, MessageSquare } from 'lucide-react'
+import { Eye, EyeOff, Moon, Sun, GraduationCap, BookOpen, BarChart3, MessageSquare } from 'lucide-react'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 
 const features = [
@@ -21,9 +21,18 @@ export default function Login() {
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const validate = () => {
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!form.email.trim() || !form.password) return 'Please fill all fields'
+    if (!emailRe.test(form.email)) return 'Please enter a valid email address'
+    if (form.password.length < 6) return 'Password must be at least 6 characters'
+    return null
+  }
+
   const handle = async (e) => {
     e.preventDefault()
-    if (!form.email || !form.password) return toast.error('Please fill all fields')
+    const err = validate()
+    if (err) return toast.error(err)
     setLoading(true)
     try {
       const user = await login(form.email, form.password)
@@ -48,11 +57,11 @@ export default function Login() {
           <div className="absolute -bottom-16 left-1/4 w-48 h-48 bg-white/5 rounded-full" />
         </div>
         <div className="relative z-10 text-white max-w-sm">
-          <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-8 shadow-lg">
-            <School className="h-8 w-8" />
+          <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-lg p-1">
+            <img src="/logo.png" alt="Aklank College" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-4xl font-bold mb-3 leading-tight">EduManage<br/>AI</h1>
-          <p className="text-white/70 text-lg mb-10">Smart Student Management System</p>
+          <h1 className="text-4xl font-bold mb-3 leading-tight">Aklank<br/>College</h1>
+          <p className="text-white/70 text-lg mb-10">Aklank Girls P.G. College, Kota</p>
           <div className="space-y-3">
             {features.map(({ icon: Icon, label }) => (
               <div key={label} className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
@@ -71,10 +80,10 @@ export default function Login() {
         {/* Mobile header bar */}
         <div className="absolute top-4 left-4 right-4 flex items-center justify-between lg:hidden">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-sm">
-              <School className="h-4 w-4 text-white" />
+            <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-sm p-0.5">
+              <img src="/logo.png" alt="Aklank College" className="w-full h-full object-contain" />
             </div>
-            <span className="font-bold text-gray-900 dark:text-white">EduManage AI</span>
+            <span className="font-bold text-gray-900 dark:text-white">Aklank College</span>
           </div>
           <button onClick={toggle} className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 transition-colors">
             {dark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-gray-600" />}

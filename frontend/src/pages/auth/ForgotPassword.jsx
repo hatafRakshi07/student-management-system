@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { authAPI } from '../../services/api'
 import toast from 'react-hot-toast'
-import { Mail, ArrowLeft, CheckCircle, GraduationCap } from 'lucide-react'
+import { Mail, ArrowLeft, CheckCircle } from 'lucide-react'
 import DarkModeToggle from '../../components/common/DarkModeToggle'
 
 export default function ForgotPassword() {
@@ -29,10 +29,10 @@ export default function ForgotPassword() {
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col">
       <div className="flex items-center justify-between p-4 sm:p-6">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-600 rounded-xl flex items-center justify-center">
-            <GraduationCap className="h-5 w-5 text-white" />
+          <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-sm p-0.5">
+            <img src="/logo.png" alt="Aklank College" className="w-full h-full object-contain" />
           </div>
-          <span className="font-bold text-gray-900 dark:text-white">EduManage AI</span>
+          <span className="font-bold text-gray-900 dark:text-white">Aklank College</span>
         </div>
         <DarkModeToggle />
       </div>

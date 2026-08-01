@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, ClipboardList,
   BarChart3, Bell, DollarSign, Calendar, CalendarDays, FileText, Brain, Settings,
-  UserCheck, BookMarked, ChevronRight, School, FlaskConical, LogOut, X
+  UserCheck, BookMarked, ChevronRight, FlaskConical, LogOut, X
 } from 'lucide-react'
 
 const navItems = {
@@ -81,11 +81,11 @@ export default function Sidebar({ open, onClose }) {
           <div className="absolute -bottom-2 -left-2 w-14 h-14 bg-white/10 rounded-full" />
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <School className="h-5 w-5 text-white" />
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+                <img src="/logo.png" alt="Aklank College" className="w-9 h-9 object-contain rounded-lg" />
               </div>
               <div>
-                <p className="font-bold text-white text-sm leading-tight">EduManage AI</p>
+                <p className="font-bold text-white text-sm leading-tight">Aklank College</p>
                 <p className="text-xs text-white/70 capitalize mt-0.5">{user?.role} Portal</p>
               </div>
             </div>
@@ -148,7 +148,7 @@ export default function Sidebar({ open, onClose }) {
             </span>
             Sign Out
           </button>
-          <p className="text-[10px] text-gray-300 dark:text-gray-600 text-center mt-2">EduManage AI v1.0</p>
+          <p className="text-[10px] text-gray-300 dark:text-gray-600 text-center mt-2">Aklank College Portal v1.0</p>
         </div>
       </aside>
     </>

@@ -35,7 +35,7 @@ export default function AdminDashboard() {
     <div className="space-y-5 animate-page">
       <div>
         <h1 className="page-title">Admin Dashboard</h1>
-        <p className="page-subtitle">School overview at a glance</p>
+        <p className="page-subtitle">Aklank College overview at a glance</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

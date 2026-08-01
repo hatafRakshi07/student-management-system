@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
@@ -12,10 +13,12 @@ from app.schemas.user import (
     UserLogin, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest,
 )
 from app.utils.password_handler import hash_password, verify_password
-from app.utils.jwt_handler import create_access_token
+from app.utils.jwt_handler import create_access_token, verify_token, revoke_token
 from app.utils.helpers import generate_reset_token
-from app.utils.auth_deps import get_current_user
+from app.utils.auth_deps import get_current_user, require_admin
+from app.utils.rate_limit import limiter
 
+security = HTTPBearer()
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
@@ -38,7 +41,8 @@ def _user_out(user: User, db: Session) -> dict:
 
 
 @router.post("/login")
-def login(creds: UserLogin, request: Request, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == creds.email).first()
     if not user or not verify_password(creds.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,6 +55,23 @@ def login(creds: UserLogin, request: Request, db: Session = Depends(get_db)):
     db.commit()
     token = create_access_token({"sub": str(user.id), "role": user.role.value})
     return {"access_token": token, "token_type": "bearer", "user": _user_out(user, db)}
+
+
+@router.post("/logout")
+def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    payload = verify_token(credentials.credentials)
+    jti = payload.get("jti")
+    exp = payload.get("exp")
+    if jti:
+        import time
+        revoke_token(jti, float(exp) if exp else time.time() + 86400)
+    db.add(AuditLog(user_id=current_user.id, action="logout"))
+    db.commit()
+    return {"message": "Logged out successfully"}
 
 
 @router.post("/register/student", status_code=201)
@@ -77,7 +98,11 @@ def register_student(data: StudentRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/register/teacher", status_code=201)
-def register_teacher(data: TeacherRegister, db: Session = Depends(get_db)):
+def register_teacher(
+    data: TeacherRegister,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     if db.query(TeacherProfile).filter(TeacherProfile.employee_id == data.employee_id).first():
@@ -99,7 +124,11 @@ def register_teacher(data: TeacherRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/register/admin", status_code=201)
-def register_admin(data: AdminRegister, db: Session = Depends(get_db)):
+def register_admin(
+    data: AdminRegister,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     user = User(email=data.email, full_name=data.full_name,

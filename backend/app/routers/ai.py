@@ -4,7 +4,10 @@ from pydantic import BaseModel
 
 from app.database import get_db
 from app.models.user import User
-from app.services.ai_service import predict_performance, get_ai_recommendations, chat_with_ai
+from app.services.ai_service import (
+    predict_performance, get_ai_recommendations,
+    chat_with_ai, get_grade_prediction,
+)
 from app.utils.auth_deps import get_current_user
 
 router = APIRouter(prefix="/api/ai", tags=["AI"])
@@ -20,9 +23,22 @@ def performance_prediction(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Random Forest: classify student performance level with confidence scores."""
     if current_user.role.value == "student" and current_user.id != student_id:
         raise HTTPException(status_code=403, detail="Access denied")
     return predict_performance(student_id, db)
+
+
+@router.get("/grade-prediction/{student_id}")
+def grade_prediction(
+    student_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Linear Regression: predict final exam marks and letter grade."""
+    if current_user.role.value == "student" and current_user.id != student_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return get_grade_prediction(student_id, db)
 
 
 @router.get("/recommendations/{student_id}")

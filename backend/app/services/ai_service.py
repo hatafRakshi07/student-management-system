@@ -1,66 +1,86 @@
+import time
 from sqlalchemy.orm import Session
-from app.models.attendance import Attendance
+from sqlalchemy import func
+from app.models.attendance import Attendance, AttendanceStatus
 from app.models.exam import Mark
 from app.models.assignment import Assignment, Submission
 from app.models.user import User
 from app.config import settings
 from typing import Optional
 
+# TTL cache: {student_id: (unix_timestamp, stats_dict)}
+_stats_cache: dict[int, tuple[float, dict]] = {}
+_CACHE_TTL = 300  # 5 minutes
+
+
+def invalidate_student_cache(student_id: int) -> None:
+    """Call this when attendance/marks/submissions are updated for a student."""
+    _stats_cache.pop(student_id, None)
+
 
 def _get_student_stats(student_id: int, db: Session) -> dict:
-    records = db.query(Attendance).filter(Attendance.student_id == student_id).all()
-    total = len(records)
-    present = sum(1 for r in records if r.status.value in ("present", "late"))
-    att_pct = round((present / total) * 100, 2) if total > 0 else 0
+    now = time.time()
+    cached = _stats_cache.get(student_id)
+    if cached and (now - cached[0]) < _CACHE_TTL:
+        return cached[1]
 
-    marks = db.query(Mark).filter(Mark.student_id == student_id).all()
-    avg_marks = round(sum(m.marks_obtained for m in marks) / len(marks), 2) if marks else 0.0
+    total = db.query(func.count(Attendance.id)).filter(
+        Attendance.student_id == student_id
+    ).scalar() or 0
+    present = db.query(func.count(Attendance.id)).filter(
+        Attendance.student_id == student_id,
+        Attendance.status.in_([AttendanceStatus.present, AttendanceStatus.late]),
+    ).scalar() or 0
+    att_pct = round((present / total) * 100, 2) if total > 0 else 0.0
 
-    all_assignments = db.query(Assignment).filter(Assignment.is_active == True).count()
-    submitted = db.query(Submission).filter(Submission.student_id == student_id).count()
-    assign_pct = round((submitted / all_assignments) * 100, 2) if all_assignments > 0 else 0
+    avg_result = db.query(func.avg(Mark.marks_obtained)).filter(
+        Mark.student_id == student_id
+    ).scalar()
+    avg_marks = round(float(avg_result), 2) if avg_result else 0.0
 
-    return {"attendance_pct": att_pct, "avg_marks": avg_marks,
-            "assignment_pct": assign_pct, "total_classes": total, "present": present}
+    all_assignments = db.query(func.count(Assignment.id)).filter(
+        Assignment.is_active == True
+    ).scalar() or 0
+    submitted = db.query(func.count(Submission.id)).filter(
+        Submission.student_id == student_id
+    ).scalar() or 0
+    assign_pct = round((submitted / all_assignments) * 100, 2) if all_assignments > 0 else 0.0
+
+    result = {"attendance_pct": att_pct, "avg_marks": avg_marks,
+              "assignment_pct": assign_pct, "total_classes": total, "present": present}
+    _stats_cache[student_id] = (now, result)
+    return result
 
 
 def predict_performance(student_id: int, db: Session) -> dict:
+    """Random Forest — classifies student performance level."""
     stats = _get_student_stats(student_id, db)
-    att_pct, avg_marks, assign_pct = stats["attendance_pct"], stats["avg_marks"], stats["assignment_pct"]
-
-    risk_score = 0
-    if att_pct < 60:
-        risk_score += 40
-    elif att_pct < 75:
-        risk_score += 20
-    elif att_pct < 85:
-        risk_score += 10
-
-    if avg_marks < 40:
-        risk_score += 40
-    elif avg_marks < 60:
-        risk_score += 20
-    elif avg_marks < 75:
-        risk_score += 10
-
-    if assign_pct < 50:
-        risk_score += 20
-    elif assign_pct < 75:
-        risk_score += 10
-
-    if risk_score >= 60:
-        level, prediction = "high", "Weak"
-    elif risk_score >= 30:
-        level, prediction = "medium", "Average"
-    elif risk_score >= 10:
-        level, prediction = "low", "Good"
-    else:
-        level, prediction = "low", "Excellent"
-
+    from app.services.ml_service import predict_performance_ml
+    ml = predict_performance_ml(
+        stats["attendance_pct"], stats["avg_marks"], stats["assignment_pct"]
+    )
     return {
-        "student_id": student_id, "prediction": prediction, "risk_level": level,
-        "risk_score": risk_score, "attendance_percentage": att_pct,
-        "average_marks": avg_marks, "assignment_completion": assign_pct,
+        "student_id": student_id,
+        "attendance_percentage": stats["attendance_pct"],
+        "average_marks": stats["avg_marks"],
+        "assignment_completion": stats["assignment_pct"],
+        **ml,
+    }
+
+
+def get_grade_prediction(student_id: int, db: Session) -> dict:
+    """Linear Regression — predicts final exam marks from current stats."""
+    stats = _get_student_stats(student_id, db)
+    from app.services.ml_service import predict_grade_lr
+    result = predict_grade_lr(
+        stats["attendance_pct"], stats["avg_marks"], stats["assignment_pct"]
+    )
+    return {
+        "student_id": student_id,
+        "attendance_percentage": stats["attendance_pct"],
+        "average_marks": stats["avg_marks"],
+        "assignment_completion": stats["assignment_pct"],
+        **result,
     }
 
 

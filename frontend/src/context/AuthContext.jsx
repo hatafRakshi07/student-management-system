@@ -9,15 +9,22 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
-    const savedUser = localStorage.getItem('user')
-    if (token && savedUser) {
-      try {
-        setUser(JSON.parse(savedUser))
-      } catch {
-        localStorage.clear()
-      }
+    if (!token) {
+      setLoading(false)
+      return
     }
-    setLoading(false)
+    // Always validate token and refresh user data from the server.
+    // This prevents a client-side localStorage edit from escalating privileges.
+    authAPI.getMe()
+      .then(res => {
+        setUser(res.data)
+        localStorage.setItem('user', JSON.stringify(res.data))
+      })
+      .catch(() => {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('user')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const login = async (email, password) => {
@@ -29,7 +36,12 @@ export function AuthProvider({ children }) {
     return userData
   }
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await authAPI.logout()
+    } catch {
+      // Proceed with local cleanup even if the server call fails
+    }
     localStorage.removeItem('access_token')
     localStorage.removeItem('user')
     setUser(null)

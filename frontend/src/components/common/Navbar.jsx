@@ -30,10 +30,8 @@ export default function Navbar({ onMenuClick }) {
           <Menu className="h-5 w-5 text-gray-600 dark:text-gray-300" />
         </button>
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-glow-sm">
-            <span className="text-white font-bold text-xs">EM</span>
-          </div>
-          <span className="font-bold text-gray-900 dark:text-white hidden sm:block text-sm">EduManage AI</span>
+          <img src="/logo.png" alt="Aklank College" className="w-8 h-8 object-contain rounded-lg" />
+          <span className="font-bold text-gray-900 dark:text-white hidden sm:block text-sm">Aklank College</span>
         </Link>
       </div>
 

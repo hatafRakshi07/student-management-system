@@ -1,11 +1,15 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
 import os
 
 from app.database import create_tables, check_connection
 from app.config import settings
+from app.utils.rate_limit import limiter
+from app.services.scheduler import start_scheduler, shutdown_scheduler
 from app.routers import (
     auth, students, teachers, parents,
     attendance, assignments, exams, fees, leaves,
@@ -19,7 +23,9 @@ async def lifespan(app: FastAPI):
     create_tables()
     for sub in ("photos", "submissions", "assignments"):
         os.makedirs(os.path.join(settings.upload_dir, sub), exist_ok=True)
+    start_scheduler()
     yield
+    shutdown_scheduler()
 
 
 app = FastAPI(
@@ -28,6 +34,10 @@ app = FastAPI(
     description="AI-Based Student Management System API",
     lifespan=lifespan,
 )
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -6,6 +6,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import { NotificationProvider } from './context/NotificationContext'
 import { FullPageLoader } from './components/common/LoadingSpinner'
 import Layout from './components/common/Layout'
+import SplashScreen from './components/common/SplashScreen'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -103,11 +104,19 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const [splash, setSplash] = useState(() => !sessionStorage.getItem('splashSeen'))
+
+  const handleSplashDone = () => {
+    sessionStorage.setItem('splashSeen', '1')
+    setSplash(false)
+  }
+
   return (
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
           <NotificationProvider>
+            {splash && <SplashScreen onDone={handleSplashDone} />}
             <AppRoutes />
             <Toaster
               position="top-right"

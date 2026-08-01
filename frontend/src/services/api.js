@@ -37,6 +37,7 @@ export const authAPI = {
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
   resetPassword: (data) => api.post('/auth/reset-password', data),
   getMe: () => api.get('/auth/me'),
+  logout: () => api.post('/auth/logout'),
   changePassword: (data) => api.post('/auth/change-password', data),
 }
 
@@ -106,10 +107,15 @@ export const analyticsAPI = {
   dashboard: () => api.get('/analytics/dashboard'),
   attendanceTrend: () => api.get('/analytics/attendance-trend'),
   studentAnalytics: (id) => api.get(`/analytics/student/${id}`),
+  // DS endpoints
+  attendanceForecast: (daysAhead = 7) => api.get('/analytics/attendance-forecast', { params: { days_ahead: daysAhead } }),
+  studentClusters: (nClusters = 3) => api.get('/analytics/student-clusters', { params: { n_clusters: nClusters } }),
+  subjectPerformance: () => api.get('/analytics/subject-performance'),
 }
 
 export const aiAPI = {
   performance: (id) => api.get(`/ai/performance/${id}`),
+  gradePrediction: (id) => api.get(`/ai/grade-prediction/${id}`),
   recommendations: (id) => api.get(`/ai/recommendations/${id}`),
   chat: (message) => api.post('/ai/chat', { message }),
 }
