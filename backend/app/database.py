@@ -44,8 +44,13 @@ def check_connection():
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        db_type = "SQLite" if _is_sqlite else "MySQL"
-        print(f"Connected to {db_type}: {settings.database_url}")
+        if _is_sqlite:
+            db_type = "SQLite"
+        elif "postgres" in settings.database_url:
+            db_type = "PostgreSQL (Supabase)"
+        else:
+            db_type = "SQL Database"
+        print(f"Connected to {db_type}")
         return True
     except Exception as exc:
         print(f"Database connection failed: {exc}")

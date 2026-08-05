@@ -10,6 +10,7 @@ from app.models.user import User
 from app.schemas.assignment import AssignmentCreate, AssignmentUpdate, GradeSubmission
 from app.utils.auth_deps import get_current_user, require_teacher_or_admin, require_student
 from app.config import settings
+from app.services.storage_service import storage_service
 
 router = APIRouter(prefix="/api/assignments", tags=["Assignments"])
 
@@ -65,7 +66,7 @@ def delete_assignment(assignment_id: int, _=Depends(require_teacher_or_admin), d
 
 
 @router.post("/{assignment_id}/submit", status_code=201)
-def submit_assignment(
+async def submit_assignment(
     assignment_id: int,
     text_content: Optional[str] = None,
     file: Optional[UploadFile] = File(None),
@@ -81,19 +82,20 @@ def submit_assignment(
         raise HTTPException(status_code=400, detail="Already submitted")
     file_path = None
     if file:
-        dest = os.path.join(settings.upload_dir, "submissions")
-        os.makedirs(dest, exist_ok=True)
-        fname = f"{assignment_id}_{current_user.id}_{file.filename}"
-        file_path = os.path.join(dest, fname)
-        with open(file_path, "wb") as f_out:
-            shutil.copyfileobj(file.file, f_out)
+        content = await file.read()
+        file_path = await storage_service.upload_file(
+            file_content=content,
+            original_filename=file.filename,
+            bucket_name="submissions",
+            content_type=file.content_type
+        )
     is_late = datetime.utcnow() > a.deadline
     sub = Submission(assignment_id=assignment_id, student_id=current_user.id,
                      text_content=text_content, file_path=file_path,
                      status=SubmissionStatus.late if is_late else SubmissionStatus.submitted)
     db.add(sub)
     db.commit()
-    return {"message": "Assignment submitted", "late": is_late}
+    return {"message": "Assignment submitted", "late": is_late, "file_url": file_path}
 
 
 @router.get("/{assignment_id}/submissions")

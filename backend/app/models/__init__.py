@@ -11,6 +11,7 @@ from app.models.notification import Notification
 from app.models.timetable import Timetable
 from app.models.leave import Leave, LeaveStatus
 from app.models.audit import AuditLog
+from app.models.message import Message
 
 __all__ = [
     "User", "UserRole",
@@ -25,4 +26,6 @@ __all__ = [
     "Timetable",
     "Leave", "LeaveStatus",
     "AuditLog",
+    "Message",
 ]
+

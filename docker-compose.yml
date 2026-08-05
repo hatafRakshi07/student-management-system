@@ -3,34 +3,37 @@ version: "3.8"
 services:
   backend:
     build: ./backend
-    restart: unless-stopped
+    restart: always
     ports:
       - "8000:8000"
     environment:
-      - SECRET_KEY=${SECRET_KEY:-CHANGE_THIS_TO_A_STRONG_RANDOM_SECRET}
+      - SECRET_KEY=${SECRET_KEY:-PROD_CHANGE_THIS_TO_A_SUPER_SECURE_RANDOMLY_GENERATED_KEY}
       - DATABASE_URL=${DATABASE_URL:-sqlite:///./student_management.db}
-      - DEBUG=false
+      - DEBUG=${DEBUG:-false}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USERNAME=${SMTP_USERNAME:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - SMTP_FROM=${SMTP_FROM:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - FRONTEND_URL=http://localhost
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
     volumes:
       - backend_uploads:/app/uploads
       - backend_db:/app
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   frontend:
     build: ./frontend
-    restart: unless-stopped
+    restart: always
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       backend:
         condition: service_healthy
@@ -38,3 +41,4 @@ services:
 volumes:
   backend_uploads:
   backend_db:
+

@@ -13,7 +13,10 @@ from app.schemas.user import (
     UserLogin, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest,
 )
 from app.utils.password_handler import hash_password, verify_password
-from app.utils.jwt_handler import create_access_token, verify_token, revoke_token
+from app.utils.jwt_handler import (
+    create_access_token, create_refresh_token,
+    verify_token, verify_refresh_token, revoke_token,
+)
 from app.utils.helpers import generate_reset_token
 from app.utils.auth_deps import get_current_user, require_admin
 from app.utils.rate_limit import limiter
@@ -54,7 +57,33 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
                     ip_address=request.client.host if request.client else None))
     db.commit()
     token = create_access_token({"sub": str(user.id), "role": user.role.value})
-    return {"access_token": token, "token_type": "bearer", "user": _user_out(user, db)}
+    refresh_token = create_refresh_token({"sub": str(user.id), "role": user.role.value})
+    return {
+        "access_token": token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": _user_out(user, db)
+    }
+
+
+@router.post("/refresh")
+def refresh_token(request_data: dict, db: Session = Depends(get_db)):
+    token_str = request_data.get("refresh_token")
+    if not token_str:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="refresh_token required")
+    payload = verify_refresh_token(token_str)
+    user_id = payload.get("sub")
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or not found")
+    new_access_token = create_access_token({"sub": str(user.id), "role": user.role.value})
+    new_refresh_token = create_refresh_token({"sub": str(user.id), "role": user.role.value})
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer"
+    }
+
 
 
 @router.post("/logout")

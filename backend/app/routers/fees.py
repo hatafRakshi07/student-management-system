@@ -51,3 +51,39 @@ def fee_stats(_=Depends(require_admin), db: Session = Depends(get_db)):
     return {"total": total, "paid": paid, "pending": total - paid,
             "count_paid": sum(1 for f in all_fees if f.status.value == "paid"),
             "count_unpaid": sum(1 for f in all_fees if f.status.value != "paid")}
+
+
+@router.post("/{fee_id}/checkout")
+def fee_checkout(fee_id: int, db: Session = Depends(get_db)):
+    fee = db.query(Fee).filter(Fee.id == fee_id).first()
+    if not fee:
+        raise HTTPException(status_code=404, detail="Fee record not found")
+    if fee.status.value == "paid":
+        raise HTTPException(status_code=400, detail="Fee is already paid")
+    from app.services.payment_service import payment_service
+    session = payment_service.create_checkout_session(
+        fee_id=fee.id,
+        student_id=fee.student_id,
+        amount=fee.amount,
+        title=f"School Fee Payment - ID {fee.id}"
+    )
+    return {"checkout_session": session}
+
+
+@router.post("/{fee_id}/verify-payment")
+def verify_payment(fee_id: int, payload: dict, db: Session = Depends(get_db)):
+    fee = db.query(Fee).filter(Fee.id == fee_id).first()
+    if not fee:
+        raise HTTPException(status_code=404, detail="Fee record not found")
+    order_id = payload.get("order_id")
+    payment_id = payload.get("payment_id")
+    from app.services.payment_service import payment_service
+    if not payment_service.verify_payment_signature(order_id, payment_id):
+        raise HTTPException(status_code=400, detail="Invalid payment verification payload")
+    
+    fee.status = FeeStatus.paid
+    fee.payment_date = datetime.utcnow()
+    fee.transaction_id = payment_id or order_id
+    db.commit()
+    return {"message": "Payment verified and recorded successfully", "fee_id": fee.id, "status": "paid"}
+

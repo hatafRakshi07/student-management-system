@@ -7,6 +7,8 @@ import { NotificationProvider } from './context/NotificationContext'
 import { FullPageLoader } from './components/common/LoadingSpinner'
 import Layout from './components/common/Layout'
 import SplashScreen from './components/common/SplashScreen'
+import ErrorBoundary from './components/common/ErrorBoundary'
+
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -102,7 +104,6 @@ function AppRoutes() {
     </Routes>
   )
 }
-
 export default function App() {
   const [splash, setSplash] = useState(() => !sessionStorage.getItem('splashSeen'))
 
@@ -112,22 +113,25 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            {splash && <SplashScreen onDone={handleSplashDone} />}
-            <AppRoutes />
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                className: 'dark:bg-gray-800 dark:text-white',
-                duration: 3000,
-              }}
-            />
-          </NotificationProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              {splash && <SplashScreen onDone={handleSplashDone} />}
+              <AppRoutes />
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  className: 'dark:bg-gray-800 dark:text-white',
+                  duration: 3000,
+                }}
+              />
+            </NotificationProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }
+

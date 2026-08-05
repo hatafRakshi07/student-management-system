@@ -1,15 +1,27 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.database import Base, get_db
+from app.utils.rate_limit import limiter
+import app.database as app_db
 
-TEST_DB_URL = "sqlite:///./test_student_management.db"
+limiter.enabled = False
 
-engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
+
+TEST_DB_URL = "sqlite:///:memory:"
+
+engine = create_engine(
+    TEST_DB_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+app_db.engine = engine
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 
 def override_get_db():
@@ -21,37 +33,49 @@ def override_get_db():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_database():
+def setup_database_session():
     import app.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
-    engine.dispose()
-    import os, time
-    for _ in range(3):
-        try:
-            if os.path.exists("test_student_management.db"):
-                os.remove("test_student_management.db")
-            break
-        except PermissionError:
-            time.sleep(0.5)
+
+
+from sqlalchemy import create_engine, text
+
+@pytest.fixture(autouse=True)
+def clean_db_before_test(setup_database_session):
+    db = TestingSessionLocal()
+    try:
+        db.execute(text("PRAGMA foreign_keys = OFF;"))
+        for table in Base.metadata.sorted_tables:
+            db.execute(table.delete())
+        db.commit()
+        db.execute(text("PRAGMA foreign_keys = ON;"))
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
+    yield
+
 
 
 @pytest.fixture
-def client(setup_database):
+def client():
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
 
 
+
 @pytest.fixture
 def admin_token(client):
-    """Register and log in an admin user; return the JWT token."""
-    # Seed admin directly via DB to bypass the admin-only guard
+    """Register/seed and return JWT token for an admin user directly."""
     from app.utils.password_handler import hash_password
-    db = TestingSessionLocal()
+    from app.utils.jwt_handler import create_access_token
     from app.models.user import User, UserRole
+
+    db = TestingSessionLocal()
     existing = db.query(User).filter(User.email == "admin@test.com").first()
     if not existing:
         admin = User(
@@ -62,6 +86,11 @@ def admin_token(client):
         )
         db.add(admin)
         db.commit()
+        db.refresh(admin)
+        admin_id = admin.id
+    else:
+        admin_id = existing.id
     db.close()
-    res = client.post("/api/auth/login", json={"email": "admin@test.com", "password": "Admin@1234"})
-    return res.json()["access_token"]
+
+    return create_access_token({"sub": str(admin_id), "role": "admin"})
+

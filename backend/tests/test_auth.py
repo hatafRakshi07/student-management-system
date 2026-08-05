@@ -101,3 +101,21 @@ def test_register_teacher_as_admin(client, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert res.status_code == 201
+
+
+def test_refresh_token_flow(client):
+    client.post("/api/auth/register/student", json=STUDENT_PAYLOAD)
+    login_res = client.post("/api/auth/login", json={
+        "email": STUDENT_PAYLOAD["email"],
+        "password": STUDENT_PAYLOAD["password"],
+    })
+    assert login_res.status_code == 200
+    data = login_res.json()
+    assert "refresh_token" in data
+    
+    refresh_res = client.post("/api/auth/refresh", json={"refresh_token": data["refresh_token"]})
+    assert refresh_res.status_code == 200
+    refreshed_data = refresh_res.json()
+    assert "access_token" in refreshed_data
+    assert "refresh_token" in refreshed_data
+
