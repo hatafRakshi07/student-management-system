@@ -94,3 +94,57 @@ def admin_token(client):
 
     return create_access_token({"sub": str(admin_id), "role": "admin"})
 
+
+@pytest.fixture
+def admin_auth_headers(admin_token):
+    return {"Authorization": f"Bearer {admin_token}"}
+
+
+@pytest.fixture
+def teacher_auth_headers(client):
+    from app.utils.password_handler import hash_password
+    from app.utils.jwt_handler import create_access_token
+    from app.models.user import User, UserRole
+    from app.models.teacher import TeacherProfile
+
+    db = TestingSessionLocal()
+    teacher = User(
+        email="teacher@test.com",
+        full_name="Test Teacher",
+        hashed_password=hash_password("Teacher@1234"),
+        role=UserRole.teacher,
+    )
+    db.add(teacher)
+    db.flush()
+    profile = TeacherProfile(user_id=teacher.id, employee_id="EMP-TEST", department="CS")
+    db.add(profile)
+    db.commit()
+    token = create_access_token({"sub": str(teacher.id), "role": "teacher"})
+    db.close()
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def student_auth_headers(client):
+    from app.utils.password_handler import hash_password
+    from app.utils.jwt_handler import create_access_token
+    from app.models.user import User, UserRole
+    from app.models.student import StudentProfile
+
+    db = TestingSessionLocal()
+    student = User(
+        email="student@test.com",
+        full_name="Test Student",
+        hashed_password=hash_password("Student@1234"),
+        role=UserRole.student,
+    )
+    db.add(student)
+    db.flush()
+    profile = StudentProfile(user_id=student.id, roll_number="ROLL-TEST", department="CS", class_name="B.Tech", section="A")
+    db.add(profile)
+    db.commit()
+    token = create_access_token({"sub": str(student.id), "role": "student"})
+    db.close()
+    return {"Authorization": f"Bearer {token}"}
+
+

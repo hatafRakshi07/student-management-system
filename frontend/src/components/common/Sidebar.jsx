@@ -19,6 +19,7 @@ const navItems = {
     { to: '/student/leaves', label: 'Leave Applications', icon: FileText },
     { to: '/student/notices', label: 'Notices', icon: Bell },
     { to: '/student/ai-insights', label: 'AI Insights', icon: Brain },
+    { to: '/profile', label: 'My Profile', icon: Settings },
   ],
   teacher: [
     { to: '/teacher', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -30,6 +31,7 @@ const navItems = {
     { to: '/teacher/students', label: 'Students', icon: GraduationCap },
     { to: '/teacher/notices', label: 'Notices', icon: Bell },
     { to: '/teacher/analytics', label: 'Analytics', icon: BarChart3 },
+    { to: '/profile', label: 'My Profile', icon: Settings },
   ],
   admin: [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -39,9 +41,11 @@ const navItems = {
     { to: '/admin/notices', label: 'Notices', icon: Bell },
     { to: '/admin/timetable', label: 'Timetable', icon: Calendar },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { to: '/profile', label: 'My Profile', icon: Settings },
   ],
   parent: [
     { to: '/parent', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/profile', label: 'My Profile', icon: Settings },
   ],
 }
 

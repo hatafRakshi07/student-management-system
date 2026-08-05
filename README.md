@@ -24,7 +24,7 @@ A modern, full-stack student management platform with AI-powered insights, role-
 | Layer | Technology |
 |---|---|
 | Backend | FastAPI (Python 3.11+) |
-| Database | MongoDB (async via Motor) |
+| Database | SQLAlchemy (SQLite / Supabase PostgreSQL) |
 | Auth | JWT (python-jose) + bcrypt (passlib) |
 | ML | scikit-learn, numpy, pandas |
 | Email | aiosmtplib |

@@ -40,6 +40,7 @@ import TimetableManagement from './pages/admin/TimetableManagement'
 import AdminAnalytics from './pages/admin/Analytics'
 
 import Notices from './pages/common/Notices'
+import Profile from './pages/common/Profile'
 import ParentDashboard from './pages/parent/Dashboard'
 
 function ProtectedRoute({ children, roles }) {
@@ -99,6 +100,9 @@ function AppRoutes() {
 
       {/* Parent */}
       <Route path="/parent" element={<ProtectedRoute roles={["parent"]}><ParentDashboard /></ProtectedRoute>} />
+
+      {/* Common */}
+      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
