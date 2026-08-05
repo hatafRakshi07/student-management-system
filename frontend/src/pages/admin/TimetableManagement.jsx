@@ -23,7 +23,7 @@ export default function TimetableManagement() {
 
   const load = (cls = classFilter) =>
     timetableAPI.get({ class_name: cls }).then(r => setEntries(r.data.timetable || [])).catch(() => {})
-  useEffect(() => load(), [])
+  useEffect(() => { load() }, [])
 
   const create = async () => {
     setLoading(true)

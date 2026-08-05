@@ -22,7 +22,7 @@ export default function FeeManagement() {
     load()
     studentAPI.list({ limit: 200 }).then(r => setStudents(r.data.students || [])).catch(() => {})
   }, [])
-  useEffect(load, [filter])
+  useEffect(() => { load() }, [filter])
 
   const create = async () => {
     if (!form.student_id || !form.amount || !form.due_date) return toast.error('Fill required fields')

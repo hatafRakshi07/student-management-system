@@ -22,7 +22,7 @@ export default function StudentManagement() {
       setPage({ total: r.data.total || 0, skip })
     }).catch(() => {})
   }
-  useEffect(() => load(), [])
+  useEffect(() => { load() }, [])
 
   const create = async () => {
     if (!form.email || !form.roll_number || !form.full_name) return toast.error('Fill required fields')

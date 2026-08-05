@@ -16,7 +16,7 @@ from app.routers import (
     auth, students, teachers, parents,
     attendance, assignments, exams, fees, leaves,
     notices, notifications, timetable, ai, analytics,
-    messages, websockets,
+    messages, websockets, import_module,
 )
 
 
@@ -102,6 +102,7 @@ app.include_router(ai.router)
 app.include_router(analytics.router)
 app.include_router(messages.router)
 app.include_router(websockets.router)
+app.include_router(import_module.router)
 
 
 

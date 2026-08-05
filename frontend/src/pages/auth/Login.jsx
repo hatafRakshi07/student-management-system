@@ -3,14 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
-import { Eye, EyeOff, Moon, Sun, GraduationCap, BookOpen, BarChart3, MessageSquare } from 'lucide-react'
+import { Eye, EyeOff, Moon, Sun, GraduationCap, BookOpen, BarChart3, MessageSquare, Award, ShieldCheck } from 'lucide-react'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 
 const features = [
-  { icon: BarChart3, label: 'AI-powered performance insights' },
-  { icon: GraduationCap, label: 'Real-time attendance tracking' },
-  { icon: BookOpen, label: 'Complete fee management' },
-  { icon: MessageSquare, label: 'Interactive AI chatbot' },
+  { icon: BarChart3, label: 'AI-Powered Performance Insights' },
+  { icon: GraduationCap, label: 'Real-time Attendance Tracking' },
+  { icon: BookOpen, label: 'Comprehensive Fee Management' },
+  { icon: Award, label: 'Recognized by Govt. of Rajasthan & UOK' },
 ]
 
 export default function Login() {
@@ -47,30 +47,49 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
-      {/* Left panel - desktop only */}
-      <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-700 to-accent-700 items-center justify-center p-12">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-gray-900 font-sans">
+      {/* Left panel - branding sidebar for desktop */}
+      <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden bg-gradient-to-br from-primary-900 via-primary-800 to-[#500c1e] items-center justify-center p-12 text-white">
         {/* Background decoration */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-20 -left-20 w-72 h-72 bg-white/10 rounded-full" />
-          <div className="absolute top-1/3 -right-16 w-56 h-56 bg-accent-500/20 rounded-full" />
-          <div className="absolute -bottom-16 left-1/4 w-48 h-48 bg-white/5 rounded-full" />
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-20 -left-20 w-80 h-80 bg-white/10 rounded-full blur-2xl" />
+          <div className="absolute top-1/3 -right-16 w-64 h-64 bg-accent-500/20 rounded-full blur-xl" />
+          <div className="absolute -bottom-16 left-1/4 w-56 h-56 bg-white/5 rounded-full blur-lg" />
         </div>
-        <div className="relative z-10 text-white max-w-sm">
-          <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-lg p-1">
-            <img src="/logo.png" alt="Aklank College" className="w-full h-full object-contain" />
+
+        <div className="relative z-10 max-w-md space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-glow-gold p-2 border-2 border-accent-400/50">
+              <img src="/logo.png" alt="Aklank College Kota" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <span className="text-xs font-semibold tracking-[0.2em] text-accent-400 uppercase px-2.5 py-0.5 rounded-full border border-accent-400/40 bg-accent-400/10">
+                Est. 1998
+              </span>
+              <h1 className="text-2xl font-black text-white tracking-wide mt-1">Aklank College</h1>
+              <p className="text-xs text-amber-200/90 font-medium">Kota (Rajasthan) India</p>
+            </div>
           </div>
-          <h1 className="text-4xl font-bold mb-3 leading-tight">Aklank<br/>College</h1>
-          <p className="text-white/70 text-lg mb-10">Aklank Girls P.G. College, Kota</p>
-          <div className="space-y-3">
+
+          <div className="border-l-4 border-accent-400 pl-4 py-1">
+            <p className="text-lg font-bold text-white leading-snug">"Excellence is a Tradition"</p>
+            <p className="text-xs text-white/70 italic mt-0.5">चारितं खलु धम्मो · Quality Education & Self-Reliance</p>
+          </div>
+
+          <div className="space-y-3 pt-2">
             {features.map(({ icon: Icon, label }) => (
-              <div key={label} className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
+              <div key={label} className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-white/15 shadow-sm">
                 <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Icon className="h-4 w-4 text-white" />
+                  <Icon className="h-4 w-4 text-accent-400" />
                 </div>
-                <span className="text-sm text-white/90">{label}</span>
+                <span className="text-sm font-medium text-white/90">{label}</span>
               </div>
             ))}
+          </div>
+
+          <div className="pt-4 border-t border-white/10 text-xs text-white/60 space-y-1">
+            <p className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-accent-400" /> Affiliated to University of Kota</p>
+            <p>Basant Vihar, Kota (Rajasthan) - 324009</p>
           </div>
         </div>
       </div>
@@ -80,35 +99,41 @@ export default function Login() {
         {/* Mobile header bar */}
         <div className="absolute top-4 left-4 right-4 flex items-center justify-between lg:hidden">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-sm p-0.5">
+            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm p-1 border border-gray-200">
               <img src="/logo.png" alt="Aklank College" className="w-full h-full object-contain" />
             </div>
-            <span className="font-bold text-gray-900 dark:text-white">Aklank College</span>
+            <div>
+              <span className="font-bold text-gray-900 dark:text-white block text-sm">Aklank College</span>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">Kota, Rajasthan</span>
+            </div>
           </div>
           <button onClick={toggle} className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 transition-colors">
             {dark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-gray-600" />}
           </button>
         </div>
 
-        <div className="w-full max-w-[400px]">
+        <div className="w-full max-w-[420px]">
           {/* Desktop theme toggle */}
-          <div className="hidden lg:flex justify-end mb-8">
+          <div className="hidden lg:flex justify-end mb-6">
             <button onClick={toggle} className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
               {dark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-gray-600" />}
             </button>
           </div>
 
-          <div className="mt-16 lg:mt-0">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Welcome back 👋</h2>
-            <p className="text-gray-400 dark:text-gray-500 mt-1.5 text-sm">Sign in to continue to your dashboard</p>
+          <div className="mt-14 lg:mt-0">
+            <div className="inline-block px-3 py-1 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-semibold rounded-full mb-3 border border-primary-200/50">
+              Portal Access
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Welcome Back 👋</h2>
+            <p className="text-gray-500 dark:text-gray-400 mt-1.5 text-sm">Sign in to your Aklank College management account</p>
           </div>
 
           <form onSubmit={handle} className="mt-8 space-y-5">
             <div>
-              <label className="label">Email Address</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Email Address</label>
               <input
                 type="email"
-                className="input"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-sm outline-none transition"
                 value={form.email}
                 onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
                 placeholder="you@school.com"
@@ -116,12 +141,13 @@ export default function Login() {
                 autoComplete="email"
               />
             </div>
+
             <div>
-              <label className="label">Password</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Password</label>
               <div className="relative">
                 <input
                   type={show ? 'text' : 'password'}
-                  className="input pr-11"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-sm outline-none pr-11 transition"
                   value={form.password}
                   onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
                   placeholder="••••••••"
@@ -136,36 +162,39 @@ export default function Login() {
                 </button>
               </div>
             </div>
+
             <div className="flex justify-end">
-              <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium">
+              <Link to="/forgot-password" className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 font-semibold">
                 Forgot password?
               </Link>
             </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 text-base py-3">
-              {loading ? <LoadingSpinner size="sm" /> : 'Sign In'}
+
+            <button type="submit" disabled={loading} className="w-full py-3 bg-gradient-to-r from-primary-700 to-primary-800 hover:from-primary-800 hover:to-primary-900 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition duration-150 flex items-center justify-center gap-2 text-sm disabled:opacity-50">
+              {loading ? <LoadingSpinner size="sm" /> : 'Sign In to Portal'}
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
-            New student?{' '}
-            <Link to="/register" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 font-semibold">
+          <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-6">
+            New student registration?{' '}
+            <Link to="/register" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 font-bold">
               Register here
             </Link>
           </p>
 
-          {/* Demo credentials */}
-          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/60">
-            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Quick Demo Access</p>
-            <div className="grid grid-cols-3 gap-2">
+          {/* Quick Demo Credentials */}
+          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm">
+            <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2.5">Quick Demo Login Shortcuts</p>
+            <div className="grid grid-cols-4 gap-1.5">
               {[
-                { role: 'Admin', email: 'admin@school.com', pass: 'Admin@123', color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/40' },
-                { role: 'Teacher', email: 'teacher1@school.com', pass: 'Teacher@123', color: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40' },
-                { role: 'Student', email: 'student1@school.com', pass: 'Student@123', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/40' },
+                { role: 'Student', email: 'student@school.com', pass: 'student123', color: 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border-primary-200' },
+                { role: 'Teacher', email: 'teacher@school.com', pass: 'teacher123', color: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200' },
+                { role: 'Admin', email: 'admin@school.com', pass: 'admin123', color: 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200' },
+                { role: 'Parent', email: 'parent@school.com', pass: 'parent123', color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200' },
               ].map(({ role, email, pass, color }) => (
                 <button
                   key={role}
                   onClick={() => setForm({ email, password: pass })}
-                  className={`text-xs font-medium py-2 px-3 rounded-xl border transition-all active:scale-95 ${color}`}
+                  className={`text-[11px] font-semibold py-1.5 px-2 rounded-lg border transition active:scale-95 text-center ${color}`}
                 >
                   {role}
                 </button>
@@ -177,5 +206,3 @@ export default function Login() {
     </div>
   )
 }
-
-

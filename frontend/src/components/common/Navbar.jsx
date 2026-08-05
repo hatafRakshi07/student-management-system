@@ -6,21 +6,21 @@ import { useNotifications } from '../../context/NotificationContext'
 import { Link } from 'react-router-dom'
 
 const roleAvatarColors = {
-  student: 'from-primary-500 to-primary-600',
-  teacher: 'from-emerald-500 to-emerald-600',
-  admin: 'from-purple-500 to-purple-600',
-  parent: 'from-orange-400 to-orange-500',
+  student: 'from-primary-600 to-primary-800',
+  teacher: 'from-emerald-600 to-emerald-800',
+  admin: 'from-purple-600 to-purple-800',
+  parent: 'from-amber-600 to-amber-800',
 }
 
 export default function Navbar({ onMenuClick }) {
   const { user, logout } = useAuth()
   const { dark, toggle } = useTheme()
   const { unread } = useNotifications()
-  const avatarGrad = roleAvatarColors[user?.role] || 'from-primary-500 to-primary-600'
+  const avatarGrad = roleAvatarColors[user?.role] || 'from-primary-600 to-primary-800'
   const initials = user?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
 
   return (
-    <nav className="glass border-b border-gray-200/60 dark:border-gray-700/60 px-3 sm:px-5 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+    <nav className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-700/80 px-3 sm:px-5 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-xs">
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={onMenuClick}
@@ -29,9 +29,14 @@ export default function Navbar({ onMenuClick }) {
         >
           <Menu className="h-5 w-5 text-gray-600 dark:text-gray-300" />
         </button>
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="Aklank College" className="w-8 h-8 object-contain rounded-lg" />
-          <span className="font-bold text-gray-900 dark:text-white hidden sm:block text-sm">Aklank College</span>
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center p-0.5 shadow-xs border border-gray-100 group-hover:scale-105 transition">
+            <img src="/logo.png" alt="Aklank College Kota" className="w-full h-full object-contain" />
+          </div>
+          <div className="hidden sm:block leading-tight">
+            <span className="font-extrabold text-gray-900 dark:text-white block text-sm tracking-tight">Aklank College</span>
+            <span className="text-[10px] font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-widest block">Kota (Raj.)</span>
+          </div>
         </Link>
       </div>
 
@@ -44,7 +49,7 @@ export default function Navbar({ onMenuClick }) {
         >
           {dark
             ? <Sun className="h-4.5 w-4.5 text-amber-400" />
-            : <Moon className="h-4.5 w-4.5" />
+            : <Moon className="h-4.5 w-4.5 text-gray-600" />
           }
         </button>
 
@@ -62,18 +67,21 @@ export default function Navbar({ onMenuClick }) {
           )}
         </Link>
 
-        {/* User menu */}
+        {/* User menu link to /profile */}
         <div className="flex items-center gap-2 ml-1 pl-2 sm:pl-3 border-l border-gray-200 dark:border-gray-700">
-          <div className={`w-8 h-8 bg-gradient-to-br ${avatarGrad} rounded-xl flex items-center justify-center shadow-sm flex-shrink-0`}>
-            <span className="text-white text-xs font-bold">{initials}</span>
-          </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight truncate max-w-[120px]">{user?.full_name}</p>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 capitalize">{user?.role}</p>
-          </div>
+          <Link to="/profile" className="flex items-center gap-2 group">
+            <div className={`w-8 h-8 bg-gradient-to-br ${avatarGrad} rounded-xl flex items-center justify-center shadow-xs flex-shrink-0 group-hover:scale-105 transition`}>
+              <span className="text-white text-xs font-bold">{initials}</span>
+            </div>
+            <div className="hidden sm:block">
+              <p className="text-xs font-bold text-gray-900 dark:text-white leading-tight truncate max-w-[120px] group-hover:text-primary-600 dark:group-hover:text-primary-400 transition">{user?.full_name}</p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 capitalize font-medium">{user?.role}</p>
+            </div>
+          </Link>
+
           <button
             onClick={logout}
-            className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-all active:scale-95"
+            className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-all active:scale-95 ml-1"
             aria-label="Logout"
           >
             <LogOut className="h-4 w-4" />

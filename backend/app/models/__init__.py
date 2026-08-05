@@ -5,7 +5,7 @@ from app.models.subject import Subject
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.assignment import Assignment, Submission, SubmissionStatus
 from app.models.exam import Exam, Mark, ExamType
-from app.models.fee import Fee, FeeStatus
+from app.models.fee import Fee, FeeStatus, FeeTransaction, FeeInstallment, FeeDiscount, UnmatchedFeeRecord, ImportLog
 from app.models.notice import Notice, TargetRole
 from app.models.notification import Notification
 from app.models.timetable import Timetable
@@ -20,7 +20,7 @@ __all__ = [
     "Attendance", "AttendanceStatus",
     "Assignment", "Submission", "SubmissionStatus",
     "Exam", "Mark", "ExamType",
-    "Fee", "FeeStatus",
+    "Fee", "FeeStatus", "FeeTransaction", "FeeInstallment", "FeeDiscount", "UnmatchedFeeRecord", "ImportLog",
     "Notice", "TargetRole",
     "Notification",
     "Timetable",
@@ -28,4 +28,3 @@ __all__ = [
     "AuditLog",
     "Message",
 ]
-

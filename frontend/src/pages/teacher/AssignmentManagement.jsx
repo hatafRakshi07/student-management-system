@@ -15,7 +15,7 @@ export default function AssignmentManagement() {
   const [gradeForm, setGradeForm] = useState({ marks: '', feedback: '' })
 
   const load = () => assignmentAPI.list().then(r => setAssignments(r.data.assignments || [])).catch(() => {})
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const create = async () => {
     if (!form.title || !form.deadline) return toast.error('Fill required fields')

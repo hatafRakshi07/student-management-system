@@ -35,7 +35,7 @@ export default function LeaveManagement() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const review = async (id, status) => {
     setReviewing(id)

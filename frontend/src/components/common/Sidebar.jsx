@@ -38,6 +38,7 @@ const navItems = {
     { to: '/admin/students', label: 'Students', icon: GraduationCap },
     { to: '/admin/teachers', label: 'Teachers', icon: Users },
     { to: '/admin/fees', label: 'Fee Management', icon: DollarSign },
+    { to: '/admin/import', label: 'Data Import Module', icon: FileText },
     { to: '/admin/notices', label: 'Notices', icon: Bell },
     { to: '/admin/timetable', label: 'Timetable', icon: Calendar },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
@@ -89,8 +90,8 @@ export default function Sidebar({ open, onClose }) {
                 <img src="/logo.png" alt="Aklank College" className="w-9 h-9 object-contain rounded-lg" />
               </div>
               <div>
-                <p className="font-bold text-white text-sm leading-tight">Aklank College</p>
-                <p className="text-xs text-white/70 capitalize mt-0.5">{user?.role} Portal</p>
+                <p className="font-extrabold text-white text-sm leading-tight">Aklank College</p>
+                <p className="text-[11px] text-amber-200/90 font-medium capitalize mt-0.5">Kota (Raj.) · {user?.role} Portal</p>
               </div>
             </div>
             <button
@@ -152,7 +153,7 @@ export default function Sidebar({ open, onClose }) {
             </span>
             Sign Out
           </button>
-          <p className="text-[10px] text-gray-300 dark:text-gray-600 text-center mt-2">Aklank College Portal v1.0</p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-2 font-medium">Aklank Girls P.G. College, Kota © 2026</p>
         </div>
       </aside>
     </>

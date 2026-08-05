@@ -23,7 +23,6 @@ export function NotificationProvider({ children }) {
     fetchNotifications()
     const interval = setInterval(fetchNotifications, 60000)
 
-    // WebSocket real-time notification integration
     let socket = null
     if (user?.id) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -32,6 +31,7 @@ export function NotificationProvider({ children }) {
 
       try {
         socket = new WebSocket(wsUrl)
+        socket.onerror = () => {} // Suppress console error if WS backend is unavailable
         socket.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data)
@@ -43,14 +43,19 @@ export function NotificationProvider({ children }) {
             fetchNotifications()
           }
         }
-      } catch (err) {
-        console.warn('WebSocket connection skipped/failed:', err)
-      }
+      } catch {}
     }
 
     return () => {
       clearInterval(interval)
-      if (socket) socket.close()
+      if (socket) {
+        socket.onerror = null
+        socket.onopen = null
+        socket.onmessage = null
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close()
+        }
+      }
     }
   }, [user])
 

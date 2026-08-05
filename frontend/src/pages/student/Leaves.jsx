@@ -18,7 +18,7 @@ export default function Leaves() {
   const [filter, setFilter] = useState('all')
 
   const load = () => leaveAPI.myLeaves().then(r => setLeaves(r.data.leaves || [])).catch(() => {})
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const submit = async () => {
     if (!form.reason || !form.from_date || !form.to_date) return toast.error('Fill all fields')

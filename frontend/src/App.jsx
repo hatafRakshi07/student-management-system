@@ -38,6 +38,7 @@ import TeacherManagement from './pages/admin/TeacherManagement'
 import FeeManagement from './pages/admin/FeeManagement'
 import TimetableManagement from './pages/admin/TimetableManagement'
 import AdminAnalytics from './pages/admin/Analytics'
+import ImportModule from './pages/admin/ImportModule'
 
 import Notices from './pages/common/Notices'
 import Profile from './pages/common/Profile'
@@ -96,6 +97,7 @@ function AppRoutes() {
       <Route path="/admin/fees" element={<ProtectedRoute roles={["admin"]}><FeeManagement /></ProtectedRoute>} />
       <Route path="/admin/timetable" element={<ProtectedRoute roles={["admin"]}><TimetableManagement /></ProtectedRoute>} />
       <Route path="/admin/analytics" element={<ProtectedRoute roles={["admin"]}><AdminAnalytics /></ProtectedRoute>} />
+      <Route path="/admin/import" element={<ProtectedRoute roles={["admin"]}><ImportModule /></ProtectedRoute>} />
       <Route path="/admin/notices" element={<ProtectedRoute roles={["admin"]}><Notices /></ProtectedRoute>} />
 
       {/* Parent */}
@@ -109,16 +111,15 @@ function AppRoutes() {
   )
 }
 export default function App() {
-  const [splash, setSplash] = useState(() => !sessionStorage.getItem('splashSeen'))
+  const [splash, setSplash] = useState(true)
 
   const handleSplashDone = () => {
-    sessionStorage.setItem('splashSeen', '1')
     setSplash(false)
   }
 
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ThemeProvider>
           <AuthProvider>
             <NotificationProvider>

@@ -14,7 +14,7 @@ export default function Assignments() {
   const load = () => {
     studentAPI.assignments().then(r => { setAssignments(r.data.assignments || []); setLoading(false) }).catch(() => setLoading(false))
   }
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const submit = async () => {
     if (!textContent.trim()) return toast.error('Please enter your answer')

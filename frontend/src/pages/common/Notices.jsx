@@ -16,7 +16,7 @@ export default function Notices() {
   const [filter, setFilter] = useState('all')
 
   const load = () => noticeAPI.list().then(r => setNotices(r.data.notices || [])).catch(() => {})
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const create = async () => {
     if (!form.title || !form.description) return toast.error('Fill all fields')

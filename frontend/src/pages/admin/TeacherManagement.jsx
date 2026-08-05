@@ -12,7 +12,7 @@ export default function TeacherManagement() {
   const [loading, setLoading] = useState(false)
 
   const load = () => teacherAPI.list({ search }).then(r => setTeachers(r.data.teachers || [])).catch(() => {})
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
 
   const create = async () => {
     if (!form.email || !form.employee_id || !form.full_name) return toast.error('Fill required fields')
