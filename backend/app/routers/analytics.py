@@ -16,6 +16,12 @@ router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 
 @router.get("/dashboard")
 def admin_dashboard(_=Depends(require_admin), db: Session = Depends(get_db)):
+    from app.models.student import StudentProfile, StudentAcademicHistory
+    from app.models.fee import FeeReceipt, FeeSummary, FeeTransaction
+    from datetime import datetime
+
+    now = datetime.utcnow()
+
     total_students = db.query(func.count(User.id)).filter(
         User.role == UserRole.student, User.is_active == True
     ).scalar() or 0
@@ -26,37 +32,65 @@ def admin_dashboard(_=Depends(require_admin), db: Session = Depends(get_db)):
         Assignment.is_active == True
     ).scalar() or 0
 
-    total_att = db.query(func.count(Attendance.id)).scalar() or 0
-    present_count = db.query(func.count(Attendance.id)).filter(
-        Attendance.status == AttendanceStatus.present
-    ).scalar() or 0
-    att_pct = round((present_count / total_att) * 100, 2) if total_att > 0 else 0.0
+    # Class-wise & Course-wise breakdown
+    class_wise = db.query(StudentProfile.class_name, func.count(StudentProfile.id)).group_by(StudentProfile.class_name).all()
+    course_wise = db.query(StudentProfile.department, func.count(StudentProfile.id)).group_by(StudentProfile.department).all()
 
-    total_fee = float(db.query(func.coalesce(func.sum(Fee.amount), 0.0)).scalar() or 0.0)
-    paid_fee = float(
-        db.query(func.coalesce(func.sum(Fee.amount), 0.0))
-        .filter(Fee.status == FeeStatus.paid)
-        .scalar() or 0.0
-    )
+    # Session-wise breakdown
+    session_wise = db.query(StudentAcademicHistory.session, func.count(func.distinct(StudentAcademicHistory.student_id))).group_by(StudentAcademicHistory.session).all()
 
-    grade_results = (
-        db.query(
-            func.coalesce(Mark.grade, "N/A").label("grade"),
-            func.count(Mark.id).label("count"),
-        )
-        .group_by(func.coalesce(Mark.grade, "N/A"))
-        .all()
-    )
-    grade_dist = {r.grade: r.count for r in grade_results}
+    # Gender & Category ratios
+    gender_ratio = db.query(StudentProfile.gender, func.count(StudentProfile.id)).group_by(StudentProfile.gender).all()
+    category_ratio = db.query(StudentProfile.category, func.count(StudentProfile.id)).group_by(StudentProfile.category).all()
+
+    # Financial Collections
+    today_collection = db.query(func.coalesce(func.sum(FeeReceipt.amount), 0.0)).filter(
+        func.date(FeeReceipt.receipt_date) == now.date()
+    ).scalar() or 0.0
+
+    monthly_collection = db.query(func.coalesce(func.sum(FeeReceipt.amount), 0.0)).filter(
+        func.extract('month', FeeReceipt.receipt_date) == now.month,
+        func.extract('year', FeeReceipt.receipt_date) == now.year
+    ).scalar() or 0.0
+
+    yearly_collection = db.query(func.coalesce(func.sum(FeeReceipt.amount), 0.0)).filter(
+        func.extract('year', FeeReceipt.receipt_date) == now.year
+    ).scalar() or 0.0
+
+    total_paid_fee = float(db.query(func.coalesce(func.sum(FeeReceipt.amount), 0.0)).scalar() or 0.0)
+    total_pending_fee = float(db.query(func.coalesce(func.sum(FeeSummary.pending_fee), 0.0)).scalar() or 0.0)
+
+    # Recent Admissions & Payments
+    recent_admissions = db.query(User, StudentProfile).join(StudentProfile, User.id == StudentProfile.user_id)\
+        .filter(User.role == UserRole.student).order_by(User.created_at.desc()).limit(5).all()
+
+    recent_payments = db.query(FeeReceipt).order_by(FeeReceipt.receipt_date.desc()).limit(5).all()
 
     return {
-        "total_students": total_students, "total_teachers": total_teachers,
+        "total_students": total_students,
+        "total_teachers": total_teachers,
         "total_assignments": total_assignments,
-        "attendance_percentage": att_pct,
-        "total_fee_amount": total_fee, "paid_fee_amount": paid_fee,
-        "pending_fee_amount": total_fee - paid_fee,
-        "grade_distribution": grade_dist,
+        "total_active_students": total_students,
+        "class_wise_students": {c or "Unassigned": count for c, count in class_wise},
+        "course_wise_students": {d or "General": count for d, count in course_wise},
+        "session_wise_students": {s or "2023-24": count for s, count in session_wise},
+        "gender_ratio": {g or "Unspecified": count for g, count in gender_ratio},
+        "category_ratio": {cat or "General": count for cat, count in category_ratio},
+        "today_collection": today_collection,
+        "monthly_collection": monthly_collection,
+        "yearly_collection": yearly_collection,
+        "paid_fees": total_paid_fee,
+        "pending_fees": total_pending_fee,
+        "recent_admissions": [
+            {"id": u.id, "name": u.full_name, "class": sp.class_name, "date": u.created_at}
+            for u, sp in recent_admissions
+        ],
+        "recent_payments": [
+            {"receipt_no": r.receipt_no, "amount": r.amount, "mode": r.payment_mode, "date": r.receipt_date}
+            for r in recent_payments
+        ]
     }
+
 
 
 @router.get("/attendance-trend")

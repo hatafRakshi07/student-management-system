@@ -1,16 +1,21 @@
-FROM python:3.11-slim
+# Production Dockerfile for College ERP Enterprise Edition
+FROM python:3.10-slim as builder
 
 WORKDIR /app
 
-# Install dependencies first (layer cache)
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Create upload directories
-RUN mkdir -p uploads/photos uploads/submissions uploads/assignments
-
 EXPOSE 8000
 
-CMD ["python", "run.py"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

@@ -139,4 +139,8 @@ export const parentAPI = {
   childMarks: () => api.get('/parents/child/marks'),
 }
 
+export const subjectAPI = {
+  list: () => api.get('/subjects'),
+}
+
 export default api

@@ -46,10 +46,28 @@ def _user_out(user: User, db: Session) -> dict:
 @router.post("/login")
 @limiter.limit("10/minute")
 def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == creds.email).first()
+    login_id = (creds.email or "").strip()
+    
+    # Match by username, email, or phone
+    user = db.query(User).filter(
+        (User.username == login_id) |
+        (User.email == login_id) |
+        (User.phone == login_id)
+    ).first()
+
+    if not user:
+        # Match by Scholar No / Roll Number / Reg No / Admission No in StudentProfile
+        sp = db.query(StudentProfile).filter(
+            (StudentProfile.roll_number == login_id) |
+            (StudentProfile.reg_no == login_id) |
+            (StudentProfile.admission_no == login_id)
+        ).first()
+        if sp:
+            user = db.query(User).filter(User.id == sp.user_id).first()
+
     if not user or not verify_password(creds.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Invalid email or password")
+                            detail="Invalid username, email, or password")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
     user.last_login = datetime.utcnow()

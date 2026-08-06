@@ -1,0 +1,36 @@
+services:
+  # ================================
+  # 1. FASTAPI BACKEND WEB SERVICE
+  # ================================
+  - type: web
+    name: college-erp-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres.tzahxmdwxfgxfmwnaznd:Aklank2026!Password@aws-0-ap-south-1.pooler.supabase.com:6543/postgres
+      - key: SECRET_KEY
+        value: aklank_erp_super_secret_jwt_key_2026_enterprise_v10
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.10.11
+
+  # ================================
+  # 2. VITE REACT FRONTEND STATIC SITE
+  # ================================
+  - type: web
+    name: college-erp-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://college-erp-backend.onrender.com/api

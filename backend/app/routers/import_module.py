@@ -174,10 +174,120 @@ def get_import_dashboard_metrics(
         "yearly_collection": yearly_collection,
         "total_fees_collected": total_paid_amount,
         "paid_fees": total_paid_amount,
-        "pending_fees": max(0.0, 15000.0 * total_students - total_paid_amount - total_discount_amount), # Estimated base fee
+        "pending_fees": max(0.0, 15000.0 * total_students - total_paid_amount - total_discount_amount),
         "discount_amount": total_discount_amount,
         "refund_amount": total_refund_amount,
         "cancelled_receipts": cancelled_count,
         "cancelled_amount": cancelled_amount,
         "student_fee_summary": student_summary
     }
+
+
+@router.get("/ai-analytics")
+def get_ai_analytics_report(
+    db: Session = Depends(get_db),
+    _=Depends(require_teacher_or_admin)
+):
+    """
+    Step 18 AI Features:
+    - Student Fee Status Summary
+    - Pending Fee Alerts & Top Defaulters
+    - Class Collection Reports
+    - Session Comparison
+    - Admission & Revenue Trends
+    - Payment Mode Analytics
+    """
+    from app.models.fee import FeeSummary, FeeReceipt
+    from app.models.student import StudentAcademicHistory
+
+    # 1. Student Fee Status Distribution
+    status_counts = db.query(
+        FeeSummary.current_status, func.count(FeeSummary.id)
+    ).group_by(FeeSummary.current_status).all()
+
+    status_summary = {st: count for st, count in status_counts}
+
+    # 2. Top Defaulters (highest pending balance)
+    defaulters_query = db.query(
+        FeeSummary.student_id,
+        User.full_name,
+        StudentProfile.roll_number,
+        StudentProfile.class_name,
+        FeeSummary.pending_fee,
+        FeeSummary.total_paid
+    ).join(User, FeeSummary.student_id == User.id)\
+     .outerjoin(StudentProfile, User.id == StudentProfile.user_id)\
+     .filter(FeeSummary.pending_fee > 0)\
+     .order_by(FeeSummary.pending_fee.desc()).limit(10).all()
+
+    top_defaulters = [
+        {
+            "student_id": d.student_id,
+            "name": d.full_name,
+            "scholar_no": d.roll_number,
+            "class_name": d.class_name,
+            "pending_fee": d.pending_fee,
+            "total_paid": d.total_paid
+        }
+        for d in defaulters_query
+    ]
+
+    # 3. Class Collection Reports
+    class_collection = db.query(
+        StudentProfile.class_name,
+        func.sum(FeeReceipt.amount).label("collected"),
+        func.count(FeeReceipt.receipt_id).label("receipts_count")
+    ).join(User, StudentProfile.user_id == User.id)\
+     .join(FeeReceipt, User.id == FeeReceipt.student_id)\
+     .group_by(StudentProfile.class_name).all()
+
+    class_reports = [
+        {
+            "class_name": c.class_name or "Unassigned",
+            "collected_amount": c.collected or 0.0,
+            "receipts_count": c.receipts_count
+        }
+        for c in class_collection
+    ]
+
+    # 4. Session Comparison
+    session_comparison = db.query(
+        FeeReceipt.session,
+        func.sum(FeeReceipt.amount).label("collected_amount"),
+        func.count(FeeReceipt.receipt_id).label("total_receipts")
+    ).group_by(FeeReceipt.session).all()
+
+    session_reports = [
+        {
+            "session": s.session or "2023-24",
+            "collected_amount": s.collected_amount or 0.0,
+            "total_receipts": s.total_receipts
+        }
+        for s in session_comparison
+    ]
+
+    # 5. Payment Mode Analytics
+    mode_analytics = db.query(
+        FeeReceipt.payment_mode,
+        func.sum(FeeReceipt.amount).label("total_amount"),
+        func.count(FeeReceipt.receipt_id).label("count")
+    ).group_by(FeeReceipt.payment_mode).all()
+
+    payment_analytics = [
+        {
+            "payment_mode": m.payment_mode or "CASH",
+            "total_amount": m.total_amount or 0.0,
+            "count": m.count
+        }
+        for m in mode_analytics
+    ]
+
+    return {
+        "status": "SUCCESS",
+        "fee_status_summary": status_summary,
+        "top_defaulters": top_defaulters,
+        "class_collection_reports": class_reports,
+        "session_comparison": session_reports,
+        "payment_analytics": payment_analytics
+    }
+

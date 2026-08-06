@@ -103,6 +103,17 @@ app.include_router(analytics.router)
 app.include_router(messages.router)
 app.include_router(websockets.router)
 app.include_router(import_module.router)
+from app.routers import audit, hr, parents, academic_planner, library, enterprise, expansion, advanced, digital, tenant
+app.include_router(audit.router)
+app.include_router(hr.router)
+app.include_router(parents.router)
+app.include_router(academic_planner.router)
+app.include_router(library.router)
+app.include_router(enterprise.router)
+app.include_router(expansion.router)
+app.include_router(advanced.router)
+app.include_router(digital.router)
+app.include_router(tenant.router)
 
 
 

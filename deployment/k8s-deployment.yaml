@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: college-erp-backend
+  labels:
+    app: college-erp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: college-erp
+  template:
+    metadata:
+      labels:
+        app: college-erp
+    spec:
+      containers:
+      - name: backend
+        image: collegeerp/backend:v1.0.0
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: erp-secrets
+              key: database-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: college-erp-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: college-erp

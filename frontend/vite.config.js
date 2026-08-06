@@ -47,7 +47,7 @@ export default defineConfig({
           },
         ],
       },
-      devOptions: { enabled: true },
+      devOptions: { enabled: false },
     }),
   ],
   server: {

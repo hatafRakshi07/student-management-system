@@ -1,143 +1,236 @@
-import React, { useEffect, useState } from 'react'
-import { studentAPI, attendanceAPI } from '../../services/api'
+import React, { useState, useEffect } from 'react'
+import axios from 'axios'
 import toast from 'react-hot-toast'
-import { CheckCircle, XCircle, Clock, UserCheck, Users, ChevronDown, Save } from 'lucide-react'
-
-const STATUS_CONFIG = {
-  present: { label: 'Present', color: 'bg-emerald-500 text-white', inactive: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700', icon: CheckCircle },
-  absent: { label: 'Absent', color: 'bg-red-500 text-white', inactive: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700', icon: XCircle },
-  late: { label: 'Late', color: 'bg-amber-500 text-white', inactive: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700', icon: Clock },
-}
+import { studentAPI, subjectAPI } from '../../services/api'
+import { Calendar, CheckCircle, XCircle, Clock, Save, Send, Filter, Users, AlertCircle, ShieldAlert } from 'lucide-react'
 
 export default function AttendanceManagement() {
   const [students, setStudents] = useState([])
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
-  const [attendance, setAttendance] = useState({})
+  const [subjects, setSubjects] = useState([])
+  const [selectedClass, setSelectedClass] = useState('B.A. I-SEM')
+  const [selectedSection, setSelectedSection] = useState('A')
+  const [selectedSubject, setSelectedSubject] = useState('')
+  const [lectureNo, setLectureNo] = useState(1)
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0])
+
+  const [studentStatusMap, setStudentStatusMap] = useState({})
+  const [remarksMap, setRemarksMap] = useState({})
   const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    studentAPI.list({ limit: 200 }).then(r => {
-      const s = r.data.students || []
-      setStudents(s)
-      const defaults = {}
-      s.forEach(st => { defaults[st.id] = 'present' })
-      setAttendance(defaults)
-    }).catch(() => {})
-  }, [])
-
-  const save = async () => {
+  const loadData = async () => {
     setLoading(true)
     try {
-      const records = Object.entries(attendance).map(([student_id, status]) => ({ student_id: Number(student_id), status }))
-      await attendanceAPI.markBulk({ date, records })
-      toast.success('Attendance saved successfully!')
+      const [stRes, subRes] = await Promise.all([
+        studentAPI.list({ limit: 300 }),
+        subjectAPI.list()
+      ])
+      const stList = stRes.data.students || []
+      setStudents(stList)
+
+      const initialMap = {}
+      stList.forEach(s => {
+        initialMap[s.id] = 'PRESENT'
+      })
+      setStudentStatusMap(initialMap)
+
+      const subList = subRes.data || []
+      setSubjects(subList)
+      if (subList.length) setSelectedSubject(subList[0].id)
     } catch {
-      toast.error('Failed to save attendance')
+      toast.error('Failed to load students and subjects')
     } finally {
       setLoading(false)
     }
   }
 
-  const setAll = (status) => {
-    const all = {}
-    students.forEach(s => { all[s.id] = status })
-    setAttendance(all)
-    toast(`All students marked as ${status}`, { icon: '✓' })
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const markAll = (status) => {
+    const updated = { ...studentStatusMap }
+    students.forEach(s => {
+      updated[s.id] = status
+    })
+    setStudentStatusMap(updated)
+    toast.success(`Marked all students as ${status}`)
   }
 
-  const filtered = students.filter(s =>
-    s.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    s.roll_number?.toLowerCase().includes(search.toLowerCase())
-  )
+  const handleStatusToggle = (studentId, status) => {
+    setStudentStatusMap(prev => ({ ...prev, [studentId]: status }))
+  }
 
-  const counts = Object.values(attendance).reduce((acc, s) => {
-    acc[s] = (acc[s] || 0) + 1
-    return acc
-  }, {})
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    try {
+      const token = localStorage.getItem('access_token')
+      const recordsPayload = students.map(s => ({
+        student_id: s.id,
+        status: studentStatusMap[s.id] || 'PRESENT',
+        remarks: remarksMap[s.id] || ''
+      }))
+
+      const payload = {
+        class_name: selectedClass,
+        section: selectedSection,
+        subject_id: Number(selectedSubject),
+        lecture_no: Number(lectureNo),
+        date: attendanceDate,
+        records: recordsPayload
+      }
+
+      const res = await axios.post('/api/attendance/session/submit', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      toast.success(res.data.message || 'Attendance session submitted successfully!')
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to submit attendance session')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const presentCount = Object.values(studentStatusMap).filter(v => v === 'PRESENT').length
+  const absentCount = Object.values(studentStatusMap).filter(v => v === 'ABSENT').length
+  const lateCount = Object.values(studentStatusMap).filter(v => v === 'LATE').length
+  const leaveCount = Object.values(studentStatusMap).filter(v => v === 'LEAVE' || v === 'MEDICAL_LEAVE').length
 
   return (
-    <div className="space-y-5 animate-page">
-      <div>
-        <h1 className="page-title">Mark Attendance</h1>
-        <p className="page-subtitle">Record daily attendance for your class</p>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Present', count: counts.present || 0, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-          { label: 'Absent', count: counts.absent || 0, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20' },
-          { label: 'Late', count: counts.late || 0, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20' },
-        ].map(({ label, count, color, bg }) => (
-          <div key={label} className={`card text-center p-4 ${bg}`}>
-            <p className={`text-2xl font-bold ${color}`}>{count}</p>
-            <p className="text-xs text-gray-500 uppercase tracking-wide mt-1">{label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="card">
-        {/* Controls */}
-        <div className="flex flex-wrap items-end gap-3 mb-5">
-          <div>
-            <label className="label">Date</label>
-            <input type="date" className="input w-auto" value={date} onChange={e => setDate(e.target.value)} max={new Date().toISOString().split('T')[0]} />
-          </div>
-          <div className="flex-1 min-w-48">
-            <label className="label">Search Students</label>
-            <input className="input" placeholder="Search by name or roll no…" value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-          <div className="flex gap-2">
-            {['present', 'absent', 'late'].map(s => (
-              <button key={s} onClick={() => setAll(s)}
-                className={`btn-secondary text-xs capitalize flex items-center gap-1 ${s === 'present' ? 'hover:text-emerald-700' : s === 'absent' ? 'hover:text-red-700' : 'hover:text-amber-700'}`}>
-                <Users className="h-3.5 w-3.5" /> All {s}
-              </button>
-            ))}
-          </div>
+    <div className="space-y-6 animate-page">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="page-title flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-primary-700" /> Subject & Lecture Attendance Entry ERP
+          </h1>
+          <p className="page-subtitle">Mark daily subject/lecture attendance for assigned class sections with duplicate protection</p>
         </div>
-
-        {/* Student rows */}
-        <div className="space-y-2">
-          {filtered.map(s => (
-            <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-              <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-sm font-bold text-primary-700 dark:text-primary-300 flex-shrink-0">
-                {s.full_name?.charAt(0)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-gray-900 dark:text-white">{s.full_name}</p>
-                <p className="text-xs text-gray-500">{s.roll_number} • {s.class_name}</p>
-              </div>
-              <div className="flex gap-1.5">
-                {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
-                  const isActive = attendance[s.id] === status
-                  const Icon = cfg.icon
-                  return (
-                    <button
-                      key={status}
-                      onClick={() => setAttendance(prev => ({ ...prev, [s.id]: status }))}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1 active:scale-95 ${isActive ? cfg.color : cfg.inactive}`}
-                    >
-                      <Icon className="h-3 w-3" />
-                      <span className="hidden sm:inline">{cfg.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-          {!filtered.length && (
-            <p className="text-center text-gray-500 py-8">No students found.</p>
-          )}
-        </div>
-
-        <div className="mt-5 flex justify-end">
-          <button onClick={save} disabled={loading}
-            className="btn-primary flex items-center gap-2 px-8">
-            <Save className="h-4 w-4" />
-            {loading ? 'Saving…' : 'Save Attendance'}
+        <div className="flex items-center gap-2">
+          <button onClick={() => markAll('PRESENT')} className="btn-secondary text-xs flex items-center gap-1.5">
+            <CheckCircle className="w-4 h-4 text-emerald-600" /> Mark All Present
           </button>
+          <button onClick={() => markAll('ABSENT')} className="btn-secondary text-xs flex items-center gap-1.5">
+            <XCircle className="w-4 h-4 text-red-600" /> Mark All Absent
+          </button>
+          <button onClick={handleSubmit} disabled={submitting} className="btn-primary text-xs flex items-center gap-1.5">
+            <Send className="w-4 h-4" /> {submitting ? 'Submitting...' : 'Submit Session'}
+          </button>
+        </div>
+      </div>
+
+      {/* Class & Subject Selector Header */}
+      <div className="card p-5 grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div>
+          <label className="font-bold text-gray-500 uppercase text-[10px] block mb-1">Class / Department</label>
+          <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="w-full p-2 rounded-xl border border-gray-300 dark:border-gray-600 text-xs dark:bg-gray-800">
+            {['B.A. I-SEM', 'B.A. III-SEM', 'B.A. V-SEM', 'B.SC I-SEM', 'B.COM I-SEM'].map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="font-bold text-gray-500 uppercase text-[10px] block mb-1">Section</label>
+          <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} className="w-full p-2 rounded-xl border border-gray-300 dark:border-gray-600 text-xs dark:bg-gray-800">
+            {['A', 'B', 'C', 'D'].map(s => <option key={s} value={s}>Section {s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="font-bold text-gray-500 uppercase text-[10px] block mb-1">Subject</label>
+          <select value={selectedSubject} onChange={e => setSelectedSubject(e.target.value)} className="w-full p-2 rounded-xl border border-gray-300 dark:border-gray-600 text-xs dark:bg-gray-800">
+            {subjects.map(sub => <option key={sub.id} value={sub.id}>{sub.name} ({sub.code})</option>)}
+            {!subjects.length && <option value="1">General Lecture</option>}
+          </select>
+        </div>
+        <div>
+          <label className="font-bold text-gray-500 uppercase text-[10px] block mb-1">Lecture Number</label>
+          <select value={lectureNo} onChange={e => setLectureNo(e.target.value)} className="w-full p-2 rounded-xl border border-gray-300 dark:border-gray-600 text-xs dark:bg-gray-800">
+            {[1, 2, 3, 4, 5, 6].map(l => <option key={l} value={l}>Lecture #{l}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="font-bold text-gray-500 uppercase text-[10px] block mb-1">Date</label>
+          <input type="date" value={attendanceDate} onChange={e => setAttendanceDate(e.target.value)} className="w-full p-2 rounded-xl border border-gray-300 dark:border-gray-600 text-xs dark:bg-gray-800" />
+        </div>
+      </div>
+
+      {/* Realtime Attendance Count Counters */}
+      <div className="grid grid-cols-4 gap-4 text-center">
+        <div className="card p-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200">
+          <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">{presentCount}</p>
+          <p className="text-[10px] font-bold uppercase text-emerald-600">Present</p>
+        </div>
+        <div className="card p-3 bg-red-50 dark:bg-red-900/30 border border-red-200">
+          <p className="text-xl font-black text-red-700 dark:text-red-300">{absentCount}</p>
+          <p className="text-[10px] font-bold uppercase text-red-600">Absent</p>
+        </div>
+        <div className="card p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200">
+          <p className="text-xl font-black text-amber-700 dark:text-amber-300">{lateCount}</p>
+          <p className="text-[10px] font-bold uppercase text-amber-600">Late</p>
+        </div>
+        <div className="card p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200">
+          <p className="text-xl font-black text-blue-700 dark:text-blue-300">{leaveCount}</p>
+          <p className="text-[10px] font-bold uppercase text-blue-600">On Leave</p>
+        </div>
+      </div>
+
+      {/* Student List Table */}
+      <div className="card p-0 overflow-hidden shadow-sm">
+        <div className="px-5 py-3.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 font-bold text-xs uppercase text-gray-700 dark:text-gray-300">
+          Class Register — {students.length} Enrolled Students
+        </div>
+        <div className="table-container max-h-[550px] overflow-y-auto">
+          <table className="table w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800 z-10 text-xs text-gray-600 dark:text-gray-300 font-bold">
+              <tr>
+                <th className="p-3">Scholar #</th>
+                <th className="p-3">Student Name</th>
+                <th className="p-3">Class</th>
+                <th className="p-3 text-center">Attendance Status</th>
+                <th className="p-3">Remarks</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs">
+              {students.map(s => {
+                const curSt = studentStatusMap[s.id] || 'PRESENT'
+                return (
+                  <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                    <td className="p-3 font-mono font-semibold text-gray-500">{s.roll_number || s.reg_no || `#${s.id}`}</td>
+                    <td className="p-3 font-bold text-gray-900 dark:text-white">{s.student_name || s.user?.full_name}</td>
+                    <td className="p-3 text-gray-600 dark:text-gray-400">{s.class_name}</td>
+                    <td className="p-3">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {[
+                          { key: 'PRESENT', label: 'Present', color: 'bg-emerald-600 text-white' },
+                          { key: 'ABSENT', label: 'Absent', color: 'bg-red-600 text-white' },
+                          { key: 'LATE', label: 'Late', color: 'bg-amber-500 text-white' },
+                          { key: 'LEAVE', label: 'Leave', color: 'bg-blue-600 text-white' },
+                        ].map(b => (
+                          <button
+                            key={b.key}
+                            type="button"
+                            onClick={() => handleStatusToggle(s.id, b.key)}
+                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition ${
+                              curSt === b.key ? b.color : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                            }`}
+                          >
+                            {b.label}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <input
+                        type="text"
+                        placeholder="Add note..."
+                        value={remarksMap[s.id] || ''}
+                        onChange={e => setRemarksMap({ ...remarksMap, [s.id]: e.target.value })}
+                        className="px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 text-xs w-full dark:bg-gray-900"
+                      />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

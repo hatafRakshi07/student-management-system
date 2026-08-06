@@ -22,10 +22,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
 
   const validate = () => {
-    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!form.email.trim() || !form.password) return 'Please fill all fields'
-    if (!emailRe.test(form.email)) return 'Please enter a valid email address'
-    if (form.password.length < 6) return 'Password must be at least 6 characters'
+    if (form.password.length < 4) return 'Password must be at least 4 characters'
     return null
   }
 
@@ -130,15 +128,14 @@ export default function Login() {
 
           <form onSubmit={handle} className="mt-8 space-y-5">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Email Address</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Username / Scholar No / Email</label>
               <input
-                type="email"
+                type="text"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-sm outline-none transition"
                 value={form.email}
                 onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                placeholder="you@school.com"
+                placeholder="Username, Scholar No, or Email"
                 autoFocus
-                autoComplete="email"
               />
             </div>
 

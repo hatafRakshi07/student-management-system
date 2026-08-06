@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from app.database import Base
+
 
 
 class StudentProfile(Base):
@@ -44,4 +46,116 @@ class StudentProfile(Base):
     board_roll_no_10 = Column(String(100), nullable=True)
     extra_fields = Column(String(2000), nullable=True)
 
+    # Step 9 Database Design requirement fields
+    admission_no = Column(String(100), index=True, nullable=True)
+    student_name = Column(String(255), nullable=True)
+    mobile = Column(String(50), index=True, nullable=True)
+    status = Column(String(50), default="ACTIVE")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     user = relationship("User", back_populates="student_profile")
+    academic_history = relationship(
+        "StudentAcademicHistory",
+        primaryjoin="StudentProfile.user_id == StudentAcademicHistory.student_id",
+        foreign_keys="StudentAcademicHistory.student_id",
+        viewonly=True
+    )
+    promotions = relationship(
+        "StudentPromotion",
+        primaryjoin="StudentProfile.user_id == StudentPromotion.student_id",
+        foreign_keys="StudentPromotion.student_id",
+        viewonly=True
+    )
+    documents = relationship(
+        "StudentDocument",
+        primaryjoin="StudentProfile.user_id == StudentDocument.student_id",
+        foreign_keys="StudentDocument.student_id",
+        viewonly=True
+    )
+
+
+
+class StudentAcademicHistory(Base):
+    __tablename__ = "student_academic_history"
+
+    academic_id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    session = Column(String(50), nullable=False, index=True)
+    course = Column(String(100), nullable=True)
+    class_name = Column(String(100), nullable=True)
+    semester = Column(String(50), nullable=True)
+    section = Column(String(50), nullable=True)
+    roll_no = Column(String(100), nullable=True)
+    admission_date = Column(Date, nullable=True)
+    status = Column(String(50), default="ACTIVE")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("User", foreign_keys=[student_id], backref="academic_history")
+
+
+class StudentPromotion(Base):
+    __tablename__ = "student_promotions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_session = Column(String(50), nullable=True)
+    to_session = Column(String(50), nullable=True)
+    from_class = Column(String(100), nullable=True)
+    to_class = Column(String(100), nullable=True)
+    promotion_date = Column(Date, default=datetime.utcnow)
+    remarks = Column(String(255), nullable=True)
+
+    student = relationship("User", foreign_keys=[student_id], backref="promotions")
+
+
+class StudentDocument(Base):
+    __tablename__ = "student_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    document_name = Column(String(255), nullable=False)
+    document_type = Column(String(100), nullable=True)
+    file_path = Column(String(500), nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("User", foreign_keys=[student_id], backref="documents")
+
+
+class ClassMaster(Base):
+    __tablename__ = "classes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+    course_name = Column(String(100), nullable=True)
+
+
+class SectionMaster(Base):
+    __tablename__ = "sections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), nullable=False)
+    class_name = Column(String(100), nullable=True)
+
+
+class CategoryMaster(Base):
+    __tablename__ = "categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+
+
+class CourseMaster(Base):
+    __tablename__ = "courses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+    department_name = Column(String(100), nullable=True)
+
+
+class DepartmentMaster(Base):
+    __tablename__ = "departments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+

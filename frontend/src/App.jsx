@@ -39,10 +39,33 @@ import FeeManagement from './pages/admin/FeeManagement'
 import TimetableManagement from './pages/admin/TimetableManagement'
 import AdminAnalytics from './pages/admin/Analytics'
 import ImportModule from './pages/admin/ImportModule'
+import FinancialReports from './pages/admin/FinancialReports'
+import StaffAttendance from './pages/staff/StaffAttendance'
+import AdminAttendance from './pages/admin/AdminAttendance'
+import AdminExamDashboard from './pages/admin/AdminExamDashboard'
+import AdminHRDashboard from './pages/admin/AdminHRDashboard'
+import ParentDashboard from './pages/parent/ParentDashboard'
+import AdminParentHub from './pages/admin/AdminParentHub'
+import AdminAcademicPlanner from './pages/admin/AdminAcademicPlanner'
+import AdminLibraryHub from './pages/admin/AdminLibraryHub'
+import StudentLMS from './pages/student/StudentLMS'
+import OnlineAdmission from './pages/public/OnlineAdmission'
+import AdminFinanceHub from './pages/admin/AdminFinanceHub'
+import AdminInventoryHub from './pages/admin/AdminInventoryHub'
+import AdminCertificateHub from './pages/admin/AdminCertificateHub'
+import DocumentVerification from './pages/public/DocumentVerification'
+import AdminPlacementHub from './pages/admin/AdminPlacementHub'
+import AdminResearchHub from './pages/admin/AdminResearchHub'
+import AdminAccreditationHub from './pages/admin/AdminAccreditationHub'
+import AdminBiometricHub from './pages/admin/AdminBiometricHub'
+import MobileAppHub from './pages/common/MobileAppHub'
+import AICampusAssistant from './pages/common/AICampusAssistant'
+import AdminPredictiveAnalytics from './pages/admin/AdminPredictiveAnalytics'
+import SuperAdminTenantHub from './pages/admin/SuperAdminTenantHub'
+import DeveloperApiPortal from './pages/common/DeveloperApiPortal'
 
 import Notices from './pages/common/Notices'
 import Profile from './pages/common/Profile'
-import ParentDashboard from './pages/parent/Dashboard'
 
 function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth()
@@ -98,6 +121,30 @@ function AppRoutes() {
       <Route path="/admin/timetable" element={<ProtectedRoute roles={["admin"]}><TimetableManagement /></ProtectedRoute>} />
       <Route path="/admin/analytics" element={<ProtectedRoute roles={["admin"]}><AdminAnalytics /></ProtectedRoute>} />
       <Route path="/admin/import" element={<ProtectedRoute roles={["admin"]}><ImportModule /></ProtectedRoute>} />
+      <Route path="/admin/financial-reports" element={<ProtectedRoute roles={["admin"]}><FinancialReports /></ProtectedRoute>} />
+      <Route path="/admin/attendance" element={<ProtectedRoute roles={["admin"]}><AdminAttendance /></ProtectedRoute>} />
+      <Route path="/admin/exams" element={<ProtectedRoute roles={["admin"]}><AdminExamDashboard /></ProtectedRoute>} />
+      <Route path="/admin/hr" element={<ProtectedRoute roles={["admin"]}><AdminHRDashboard /></ProtectedRoute>} />
+      <Route path="/admin/parents" element={<ProtectedRoute roles={["admin"]}><AdminParentHub /></ProtectedRoute>} />
+      <Route path="/admin/academic" element={<ProtectedRoute roles={["admin"]}><AdminAcademicPlanner /></ProtectedRoute>} />
+      <Route path="/admin/library" element={<ProtectedRoute roles={["admin"]}><AdminLibraryHub /></ProtectedRoute>} />
+      <Route path="/admin/finance" element={<ProtectedRoute roles={["admin"]}><AdminFinanceHub /></ProtectedRoute>} />
+      <Route path="/admin/inventory" element={<ProtectedRoute roles={["admin"]}><AdminInventoryHub /></ProtectedRoute>} />
+      <Route path="/admin/certificates" element={<ProtectedRoute roles={["admin"]}><AdminCertificateHub /></ProtectedRoute>} />
+      <Route path="/admin/placement" element={<ProtectedRoute roles={["admin"]}><AdminPlacementHub /></ProtectedRoute>} />
+      <Route path="/admin/research" element={<ProtectedRoute roles={["admin"]}><AdminResearchHub /></ProtectedRoute>} />
+      <Route path="/admin/accreditation" element={<ProtectedRoute roles={["admin"]}><AdminAccreditationHub /></ProtectedRoute>} />
+      <Route path="/admin/biometric" element={<ProtectedRoute roles={["admin"]}><AdminBiometricHub /></ProtectedRoute>} />
+      <Route path="/admin/analytics/predictive" element={<ProtectedRoute roles={["admin"]}><AdminPredictiveAnalytics /></ProtectedRoute>} />
+      <Route path="/admin/tenants" element={<ProtectedRoute roles={["admin"]}><SuperAdminTenantHub /></ProtectedRoute>} />
+      <Route path="/developer/portal" element={<ProtectedRoute roles={["student", "teacher", "parent", "admin"]}><DeveloperApiPortal /></ProtectedRoute>} />
+      <Route path="/mobile/hub" element={<ProtectedRoute roles={["student", "teacher", "parent", "admin"]}><MobileAppHub /></ProtectedRoute>} />
+      <Route path="/ai/assistant" element={<ProtectedRoute roles={["student", "teacher", "parent", "admin"]}><AICampusAssistant /></ProtectedRoute>} />
+      <Route path="/verify/:docNumber" element={<DocumentVerification />} />
+      <Route path="/student/lms" element={<ProtectedRoute roles={["student", "admin"]}><StudentLMS /></ProtectedRoute>} />
+      <Route path="/apply" element={<OnlineAdmission />} />
+      <Route path="/parent/dashboard" element={<ProtectedRoute roles={["parent", "admin"]}><ParentDashboard /></ProtectedRoute>} />
+      <Route path="/staff/attendance" element={<ProtectedRoute roles={["teacher", "admin"]}><StaffAttendance /></ProtectedRoute>} />
       <Route path="/admin/notices" element={<ProtectedRoute roles={["admin"]}><Notices /></ProtectedRoute>} />
 
       {/* Parent */}

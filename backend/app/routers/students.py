@@ -107,15 +107,242 @@ def my_assignments(current_user: User = Depends(require_student), db: Session = 
 
 @router.get("/fees")
 def my_fees(current_user: User = Depends(require_student), db: Session = Depends(get_db)):
-    fees = db.query(Fee).filter(Fee.student_id == current_user.id).all()
-    total = sum(f.amount for f in fees)
-    paid = sum(f.amount for f in fees if f.status.value == "paid")
+    from app.models.fee import FeeReceipt, FeeSummary
+
+    summary = db.query(FeeSummary).filter(FeeSummary.student_id == current_user.id).first()
+    receipts = db.query(FeeReceipt).filter(FeeReceipt.student_id == current_user.id).order_by(FeeReceipt.receipt_id.desc()).all()
+
+    total_amt = summary.total_fee if summary else sum(r.amount for r in receipts)
+    paid_amt = summary.total_paid if summary else sum(r.amount for r in receipts)
+    pending_amt = summary.pending_fee if summary else max(0.0, total_amt - paid_amt)
+
+    fee_list = []
+    for r in receipts:
+        fee_list.append({
+            "id": r.receipt_id,
+            "amount": r.amount,
+            "fee_type": f"Fee Receipt #{r.receipt_no or r.receipt_id}",
+            "description": f"Session {r.session or ''} - Mode: {r.payment_mode or 'CASH'}",
+            "due_date": r.receipt_date or r.created_at,
+            "payment_date": r.receipt_date or r.created_at,
+            "status": "paid",
+            "transaction_id": r.transaction_id or r.voucher_no
+        })
+
+    legacy_fees = db.query(Fee).filter(Fee.student_id == current_user.id).all()
+    for f in legacy_fees:
+        fee_list.append({
+            "id": f.id + 100000,
+            "amount": f.amount,
+            "fee_type": f.fee_type,
+            "description": f.description,
+            "due_date": f.due_date,
+            "payment_date": f.payment_date,
+            "status": f.status.value if hasattr(f.status, "value") else str(f.status),
+            "transaction_id": f.transaction_id
+        })
+
     return {
-        "total_amount": total, "paid_amount": paid, "pending_amount": total - paid,
-        "fees": [{"id": f.id, "amount": f.amount, "fee_type": f.fee_type,
-                  "description": f.description, "due_date": f.due_date,
-                  "payment_date": f.payment_date, "status": f.status.value,
-                  "transaction_id": f.transaction_id} for f in fees],
+        "total_amount": total_amt,
+        "paid_amount": paid_amt,
+        "pending_amount": pending_amt,
+        "fees": fee_list
+    }
+
+
+@router.get("/search")
+def search_students(
+    query: Optional[str] = None,
+    name: Optional[str] = None,
+    scholar_no: Optional[str] = None,
+    reg_no: Optional[str] = None,
+    admission_no: Optional[str] = None,
+    father_name: Optional[str] = None,
+    mother_name: Optional[str] = None,
+    mobile: Optional[str] = None,
+    class_name: Optional[str] = None,
+    semester: Optional[str] = None,
+    session: Optional[str] = None,
+    skip: int = 0, limit: int = 50,
+    _=Depends(require_teacher_or_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Step 13: Search student by Name, Scholar Number, Registration Number, Admission Number,
+    Father Name, Mother Name, Mobile Number, Class, Semester, Session.
+    """
+    from app.models.student import StudentAcademicHistory
+
+    q = db.query(User, StudentProfile).join(StudentProfile, User.id == StudentProfile.user_id).filter(User.role == UserRole.student)
+
+    if query:
+        q = q.filter(
+            User.full_name.ilike(f"%{query}%") |
+            User.phone.ilike(f"%{query}%") |
+            StudentProfile.roll_number.ilike(f"%{query}%") |
+            StudentProfile.reg_no.ilike(f"%{query}%") |
+            StudentProfile.admission_no.ilike(f"%{query}%") |
+            StudentProfile.father_name.ilike(f"%{query}%") |
+            StudentProfile.mother_name.ilike(f"%{query}%")
+        )
+
+    if name:
+        q = q.filter(User.full_name.ilike(f"%{name}%") | StudentProfile.student_name.ilike(f"%{name}%"))
+    if scholar_no:
+        q = q.filter(StudentProfile.roll_number.ilike(f"%{scholar_no}%"))
+    if reg_no:
+        q = q.filter(StudentProfile.reg_no.ilike(f"%{reg_no}%"))
+    if admission_no:
+        q = q.filter(StudentProfile.admission_no.ilike(f"%{admission_no}%"))
+    if father_name:
+        q = q.filter(StudentProfile.father_name.ilike(f"%{father_name}%"))
+    if mother_name:
+        q = q.filter(StudentProfile.mother_name.ilike(f"%{mother_name}%"))
+    if mobile:
+        q = q.filter(
+            User.phone.ilike(f"%{mobile}%") |
+            StudentProfile.father_mobile.ilike(f"%{mobile}%") |
+            StudentProfile.mother_mobile.ilike(f"%{mobile}%")
+        )
+    if class_name:
+        q = q.filter(StudentProfile.class_name.ilike(f"%{class_name}%"))
+    if semester:
+        q = q.filter(StudentProfile.semester == int(semester) if str(semester).isdigit() else StudentProfile.semester)
+    if session:
+        subq = db.query(StudentAcademicHistory.student_id).filter(StudentAcademicHistory.session.ilike(f"%{session}%")).subquery()
+        q = q.filter(User.id.in_(subq))
+
+    total = q.count()
+    results = q.offset(skip).limit(limit).all()
+
+    return {
+        "total": total,
+        "students": [
+            {
+                "id": u.id,
+                "scholar_no": sp.roll_number,
+                "reg_no": sp.reg_no,
+                "admission_no": sp.admission_no,
+                "student_name": u.full_name or sp.student_name,
+                "father_name": sp.father_name,
+                "mother_name": sp.mother_name,
+                "dob": sp.date_of_birth,
+                "gender": sp.gender,
+                "mobile": u.phone or sp.father_mobile,
+                "class_name": sp.class_name,
+                "section": sp.section,
+                "department": sp.department,
+                "category": sp.category,
+                "status": sp.status or ("ACTIVE" if u.is_active else "INACTIVE")
+            }
+            for u, sp in results
+        ]
+    }
+
+
+@router.get("/dashboard/{student_id}")
+def get_student_dashboard(
+    student_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Step 11: Comprehensive Student Dashboard payload returning:
+    Profile, Academic History, Fee Summary, Fee Receipts, Pending Fees, Attendance, Documents, Promotion History.
+    """
+    from app.models.fee import FeeReceipt, FeeSummary
+    from app.models.student import StudentAcademicHistory, StudentPromotion, StudentDocument
+
+    user = db.query(User).filter(User.id == student_id, User.role == UserRole.student).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    sp = db.query(StudentProfile).filter(StudentProfile.user_id == student_id).first()
+    ac_history = db.query(StudentAcademicHistory).filter(StudentAcademicHistory.student_id == student_id).all()
+    fee_sum = db.query(FeeSummary).filter(FeeSummary.student_id == student_id).first()
+    receipts = db.query(FeeReceipt).filter(FeeReceipt.student_id == student_id).order_by(FeeReceipt.receipt_date.desc()).all()
+    promotions = db.query(StudentPromotion).filter(StudentPromotion.student_id == student_id).all()
+    docs = db.query(StudentDocument).filter(StudentDocument.student_id == student_id).all()
+
+    # Attendance calculation
+    attendance_records = db.query(Attendance).filter(Attendance.student_id == student_id).all()
+    total_att = len(attendance_records)
+    present_att = sum(1 for a in attendance_records if a.status.value in ("present", "late"))
+    att_percentage = round((present_att / total_att) * 100, 2) if total_att > 0 else 0.0
+
+    return {
+        "profile": {
+            "student_id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "student_name": user.full_name,
+            "scholar_no": sp.roll_number if sp else None,
+            "registration_no": sp.reg_no if sp else None,
+            "admission_no": sp.admission_no if sp else None,
+            "father_name": sp.father_name if sp else None,
+            "mother_name": sp.mother_name if sp else None,
+            "dob": sp.date_of_birth if sp else None,
+            "gender": sp.gender if sp else None,
+            "mobile": user.phone or (sp.father_mobile if sp else None),
+            "father_mobile": sp.father_mobile if sp else None,
+            "mother_mobile": sp.mother_mobile if sp else None,
+            "category": sp.category if sp else None,
+            "religion": sp.religion if sp else None,
+            "blood_group": sp.blood_group if sp else None,
+            "address": sp.address if sp else None,
+            "class_name": sp.class_name if sp else None,
+            "section": sp.section if sp else None,
+            "department": sp.department if sp else None
+        },
+        "academic_history": [
+            {
+                "academic_id": ah.academic_id,
+                "session": ah.session,
+                "course": ah.course,
+                "class_name": ah.class_name,
+                "section": ah.section,
+                "roll_no": ah.roll_no,
+                "admission_date": ah.admission_date,
+                "status": ah.status
+            }
+            for ah in ac_history
+        ],
+        "fee_summary": {
+            "total_fee": fee_sum.total_fee if fee_sum else 0.0,
+            "total_paid": fee_sum.total_paid if fee_sum else 0.0,
+            "discount": fee_sum.discount if fee_sum else 0.0,
+            "pending_fee": fee_sum.pending_fee if fee_sum else 0.0,
+            "balance": fee_sum.balance if fee_sum else 0.0,
+            "last_payment_date": fee_sum.last_payment_date if fee_sum else None,
+            "current_status": fee_sum.current_status if fee_sum else "UNPAID"
+        },
+        "fee_receipts": [
+            {
+                "receipt_id": r.receipt_id,
+                "voucher_no": r.voucher_no,
+                "receipt_no": r.receipt_no,
+                "receipt_date": r.receipt_date,
+                "payment_mode": r.payment_mode,
+                "amount": r.amount,
+                "discount": r.discount,
+                "bank_name": r.bank_name,
+                "remarks": r.remarks,
+                "session": r.session
+            }
+            for r in receipts
+        ],
+        "attendance": {
+            "total_classes": total_att,
+            "present_count": present_att,
+            "percentage": att_percentage
+        },
+        "documents": [
+            {"id": d.id, "name": d.document_name, "type": d.document_type, "path": d.file_path}
+            for d in docs
+        ],
+        "promotion_history": [
+            {"from_session": p.from_session, "to_session": p.to_session, "from_class": p.from_class, "to_class": p.to_class, "date": p.promotion_date}
+            for p in promotions
+        ]
     }
 
 
@@ -138,3 +365,4 @@ def delete_student(student_id: int, _=Depends(require_teacher_or_admin), db: Ses
     user.is_active = False
     db.commit()
     return {"message": "Student deactivated"}
+

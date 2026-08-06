@@ -131,3 +131,67 @@ class ImportLog(Base):
     end_time = Column(DateTime, nullable=True)
     report_summary = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class FeeReceipt(Base):
+    __tablename__ = "fee_receipts"
+
+    receipt_id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    voucher_no = Column(String(100), nullable=True, index=True)
+    receipt_no = Column(String(100), nullable=True, index=True)
+    receipt_date = Column(DateTime, nullable=True)
+    payment_mode = Column(String(50), nullable=True)
+    amount = Column(Float, default=0.0)
+    discount = Column(Float, default=0.0)
+    fine = Column(Float, default=0.0)
+    late_fee = Column(Float, default=0.0)
+    concession = Column(Float, default=0.0)
+    bank_name = Column(String(255), nullable=True)
+    transaction_id = Column(String(255), nullable=True)
+    remarks = Column(Text, nullable=True)
+    created_by = Column(String(255), nullable=True)
+    session = Column(String(50), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("User", foreign_keys=[student_id], backref="fee_receipts")
+
+
+class FeeSummary(Base):
+    __tablename__ = "fee_summary"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    total_fee = Column(Float, default=0.0)
+    total_paid = Column(Float, default=0.0)
+    discount = Column(Float, default=0.0)
+    scholarship = Column(Float, default=0.0)
+    concession = Column(Float, default=0.0)
+    pending_fee = Column(Float, default=0.0)
+    balance = Column(Float, default=0.0)
+    last_payment_date = Column(DateTime, nullable=True)
+    installments_paid = Column(Integer, default=0)
+    current_status = Column(String(50), default="UNPAID")
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    student = relationship("User", foreign_keys=[student_id], backref="fee_summary")
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    payment_id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    receipt_id = Column(Integer, ForeignKey("fee_receipts.receipt_id", ondelete="SET NULL"), nullable=True, index=True)
+    payment_mode = Column(String(50), nullable=True)
+    bank = Column(String(255), nullable=True)
+    upi = Column(String(100), nullable=True)
+    cheque = Column(String(100), nullable=True)
+    cash = Column(String(100), nullable=True)
+    reference_number = Column(String(255), nullable=True)
+    payment_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("User", foreign_keys=[student_id], backref="payments")
+    receipt = relationship("FeeReceipt", foreign_keys=[receipt_id], backref="payments")
+
