@@ -128,28 +128,36 @@ export default function Login() {
             <p className="text-gray-500 dark:text-gray-400 mt-1.5 text-sm">Sign in to your Aklank College management account</p>
           </div>
 
-          <form onSubmit={handle} className="mt-8 space-y-5">
+          <form onSubmit={handle} className="mt-6 space-y-4">
+            <div className="p-3 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/40 rounded-xl text-xs text-amber-900 dark:text-amber-200">
+              💡 <strong>Login Option:</strong> You can login using your <strong>Student Name</strong>, <strong>Scholar No / Roll No</strong>, or <strong>Email</strong> with your <strong>Password</strong> or <strong>Mobile Number</strong>.
+            </div>
+
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Username / Scholar No / Email</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
+                Student Name / Scholar No / Roll No / Email
+              </label>
               <input
                 type="text"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-sm outline-none transition"
                 value={form.email}
                 onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                placeholder="Username, Scholar No, or Email"
+                placeholder="Enter Student Name, Scholar No, Roll No, or Email"
                 autoFocus
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">Password</label>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
+                Password / Mobile Number
+              </label>
               <div className="relative">
                 <input
                   type={show ? 'text' : 'password'}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-sm outline-none pr-11 transition"
                   value={form.password}
                   onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                  placeholder="••••••••"
+                  placeholder="Enter Password or Registered Mobile No."
                   autoComplete="current-password"
                 />
                 <button
