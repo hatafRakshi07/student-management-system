@@ -45,11 +45,19 @@ def _init_engine():
 
     if _is_sqlite:
         print(f"Using SQLite database: {db_url}")
-        return create_engine(
+        eng = create_engine(
             db_url,
             connect_args={"check_same_thread": False},
             echo=settings.debug,
         )
+        try:
+            import app.models  # noqa: F401
+            Base.metadata.create_all(bind=eng)
+            from app.seed import seed_database
+            seed_database()
+        except Exception:
+            pass
+        return eng
 
     # For PostgreSQL / Supabase, attempt connection test with 3s timeout
     try:
@@ -62,7 +70,9 @@ def _init_engine():
         )
         with test_eng.connect() as conn:
             conn.execute(text("SELECT 1"))
-        print(f"Connected to PostgreSQL database cleanly")
+        import app.models  # noqa: F401
+        Base.metadata.create_all(bind=test_eng)
+        print("Connected to PostgreSQL database cleanly")
         return test_eng
     except Exception as exc:
         print(f"PostgreSQL connection failed ({exc}). Falling back to SQLite database...")

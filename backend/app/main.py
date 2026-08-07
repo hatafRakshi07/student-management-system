@@ -40,12 +40,14 @@ async def lifespan(app: FastAPI):
             start_scheduler()
         except Exception as e:
             print("Scheduler notice:", e)
-    yield
-    if not os.getenv("VERCEL"):
-        try:
-            shutdown_scheduler()
-        except Exception:
-            pass
+    try:
+        yield
+    finally:
+        if not os.getenv("VERCEL"):
+            try:
+                shutdown_scheduler()
+            except Exception:
+                pass
 
 
 app = FastAPI(
