@@ -1,9 +1,20 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-const apiBaseURL = import.meta.env.VITE_API_URL
-  ? (import.meta.env.VITE_API_URL.endsWith('/api') ? import.meta.env.VITE_API_URL : `${import.meta.env.VITE_API_URL}/api`)
-  : '/api'
+const getBaseURL = () => {
+  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+    const trimmed = envUrl.trim()
+    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+  }
+  // Default to relative /api when hosted fullstack, or Render backend fallback
+  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
+    return 'https://student-management-system-9yuf.onrender.com/api'
+  }
+  return '/api'
+}
+
+const apiBaseURL = getBaseURL()
 
 const api = axios.create({
   baseURL: apiBaseURL,
