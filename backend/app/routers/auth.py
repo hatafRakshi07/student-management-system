@@ -65,15 +65,27 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         if sp:
             user = db.query(User).filter(User.id == sp.user_id).first()
 
-    if not user or not verify_password(creds.password, user.hashed_password):
+    pwd_valid = False
+    if user and user.hashed_password:
+        try:
+            pwd_valid = verify_password(creds.password, user.hashed_password)
+        except Exception:
+            pwd_valid = False
+
+    if not user or not pwd_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Invalid username, email, or password")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
-    user.last_login = datetime.utcnow()
-    db.add(AuditLog(user_id=user.id, action="login",
-                    ip_address=request.client.host if request.client else None))
-    db.commit()
+    
+    try:
+        user.last_login = datetime.utcnow()
+        ip = get_remote_address(request)
+        db.add(AuditLog(user_id=user.id, action="login", ip_address=ip))
+        db.commit()
+    except Exception:
+        db.rollback()
+
     token = create_access_token({"sub": str(user.id), "role": user.role.value})
     refresh_token = create_refresh_token({"sub": str(user.id), "role": user.role.value})
     return {
