@@ -8,7 +8,7 @@ from app.models.student import StudentProfile
 from app.models.attendance import Attendance
 from app.models.exam import Mark, Exam
 from app.models.assignment import Assignment, Submission
-from app.models.fee import Fee
+from app.models.fee import Fee, FeeSummary
 from app.utils.auth_deps import get_current_user, require_teacher_or_admin, require_student
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
@@ -23,8 +23,9 @@ def list_students(
     _=Depends(require_teacher_or_admin),
     db: Session = Depends(get_db),
 ):
-    q = (db.query(User, StudentProfile)
+    q = (db.query(User, StudentProfile, FeeSummary)
          .join(StudentProfile, User.id == StudentProfile.user_id)
+         .outerjoin(FeeSummary, User.id == FeeSummary.student_id)
          .filter(User.role == UserRole.student, User.is_active == True))
     if search:
         q = q.filter(
@@ -41,8 +42,12 @@ def list_students(
          "phone": u.phone, "profile_photo": u.profile_photo,
          "roll_number": sp.roll_number, "department": sp.department,
          "class_name": sp.class_name, "section": sp.section,
-         "semester": sp.semester, "year": sp.year, "created_at": u.created_at}
-        for u, sp in results]}
+         "semester": sp.semester, "year": sp.year, "created_at": u.created_at,
+         "total_fee": fs.total_fee if fs else 0.0,
+         "total_paid": fs.total_paid if fs else 0.0,
+         "pending_fee": fs.pending_fee if fs else 0.0,
+         "fee_status": fs.current_status if fs else "UNPAID"}
+        for u, sp, fs in results]}
 
 
 @router.get("/profile")
@@ -173,7 +178,7 @@ def search_students(
     """
     from app.models.student import StudentAcademicHistory
 
-    q = db.query(User, StudentProfile).join(StudentProfile, User.id == StudentProfile.user_id).filter(User.role == UserRole.student)
+    q = db.query(User, StudentProfile, FeeSummary).join(StudentProfile, User.id == StudentProfile.user_id).outerjoin(FeeSummary, User.id == FeeSummary.student_id).filter(User.role == UserRole.student)
 
     if query:
         q = q.filter(
@@ -233,9 +238,13 @@ def search_students(
                 "section": sp.section,
                 "department": sp.department,
                 "category": sp.category,
-                "status": sp.status or ("ACTIVE" if u.is_active else "INACTIVE")
+                "status": sp.status or ("ACTIVE" if u.is_active else "INACTIVE"),
+                "total_fee": fs.total_fee if fs else 0.0,
+                "total_paid": fs.total_paid if fs else 0.0,
+                "pending_fee": fs.pending_fee if fs else 0.0,
+                "fee_status": fs.current_status if fs else "UNPAID"
             }
-            for u, sp in results
+            for u, sp, fs in results
         ]
     }
 

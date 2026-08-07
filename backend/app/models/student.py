@@ -159,3 +159,39 @@ class DepartmentMaster(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False)
 
+
+class ArchivedStudent(Base):
+    __tablename__ = "archived_students"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    roll_number = Column(String(100), index=True, nullable=True)
+    reg_no = Column(String(100), index=True, nullable=True)
+    admission_no = Column(String(100), index=True, nullable=True)
+    student_name = Column(String(255), nullable=True)
+    father_name = Column(String(255), nullable=True)
+    date_of_birth = Column(Date, nullable=True)
+    mobile = Column(String(50), index=True, nullable=True)
+    class_name = Column(String(100), nullable=True)
+    academic_session = Column(String(50), nullable=True)
+    admission_year = Column(String(50), nullable=True)
+    current_status = Column(String(50), default="ARCHIVED")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AlumniStudent(Base):
+    __tablename__ = "alumni_students"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    roll_number = Column(String(100), index=True, nullable=True)
+    reg_no = Column(String(100), index=True, nullable=True)
+    admission_no = Column(String(100), index=True, nullable=True)
+    student_name = Column(String(255), nullable=True)
+    father_name = Column(String(255), nullable=True)
+    graduation_year = Column(String(50), nullable=True)
+    academic_session = Column(String(50), nullable=True)
+    current_status = Column(String(50), default="GRADUATED")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
