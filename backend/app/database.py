@@ -1,6 +1,9 @@
+import sys
+sys.setrecursionlimit(50000)
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, configure_mappers
 from app.config import settings
 
 import os
@@ -116,6 +119,10 @@ def get_db():
 def create_tables():
     """Create all tables defined in models and auto-seed if needed."""
     import app.models  # noqa: F401 – ensure all models are imported
+    try:
+        configure_mappers()
+    except Exception as map_err:
+        print("Mapper configuration notice:", map_err)
     try:
         Base.metadata.create_all(bind=engine)
         print("Database tables created.")
