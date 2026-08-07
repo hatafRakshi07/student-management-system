@@ -6,6 +6,11 @@ import warnings
 
 _DEFAULT_SECRET = "supersecretkey-change-in-production-min32chars!!"
 
+# Default Production Supabase PostgreSQL Connection
+_DEFAULT_POSTGRES_URL = (
+    "postgresql+psycopg2://postgres:hatafrakshi@db.xiszpcerozlsrxwuasgm.supabase.co:5432/postgres"
+)
+
 
 class Settings(BaseSettings):
     app_name: str = "Student Management System"
@@ -28,10 +33,8 @@ class Settings(BaseSettings):
             )
         return self
 
-    # Database
-    # Local SQLite (default):   sqlite:///./student_management.db
-    # Supabase PostgreSQL:      postgresql+psycopg2://postgres.[project-ref]:[password]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
-    database_url: str = "sqlite:///./student_management.db"
+    # Database: Supabase PostgreSQL
+    database_url: str = os.getenv("DATABASE_URL", _DEFAULT_POSTGRES_URL)
 
     # Supabase (optional — used by storage/realtime helpers)
     supabase_url: str = ""
@@ -56,6 +59,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 
 @lru_cache()
@@ -64,5 +68,3 @@ def get_settings():
 
 
 settings = get_settings()
-
-
