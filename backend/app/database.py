@@ -64,29 +64,17 @@ def _init_engine():
         except Exception as exc:
             print(f"PostgreSQL connection notice ({exc}). Initializing serverless database...")
             if not is_vercel:
-                # On non-Vercel environments with explicit Postgres, return engine
                 return eng
 
     # On Vercel or local fallback: initialize clean database in /tmp
     db_path = "/tmp/student_management_prod.db" if is_vercel else "./student_management.db"
     sqlite_url = f"sqlite:///{db_path}"
     
-    eng = create_engine(
+    return create_engine(
         sqlite_url,
         connect_args={"check_same_thread": False},
         echo=False,
     )
-    
-    try:
-        import app.models  # noqa: F401
-        Base.metadata.create_all(bind=eng)
-        from app.seed import seed_database
-        seed_database()
-        print("Serverless database initialized and seeded successfully.")
-    except Exception as e:
-        print("Serverless DB seed notice:", e)
-
-    return eng
 
 
 engine = _init_engine()
