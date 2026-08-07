@@ -69,12 +69,13 @@ def my_profile(current_user: User = Depends(require_student), db: Session = Depe
 def my_attendance(current_user: User = Depends(require_student), db: Session = Depends(get_db)):
     records = db.query(Attendance).filter(Attendance.student_id == current_user.id).all()
     total = len(records)
-    present = sum(1 for r in records if r.status.value in ("present", "late"))
+    present = sum(1 for r in records if (r.status.value if hasattr(r.status, "value") else str(r.status)).lower() in ("present", "late"))
     pct = round((present / total) * 100, 2) if total > 0 else 0
     return {
         "total_classes": total, "present": present, "absent": total - present,
         "percentage": pct,
-        "records": [{"id": r.id, "date": r.date, "status": r.status.value,
+        "records": [{"id": r.id, "date": r.date,
+                     "status": r.status.value if hasattr(r.status, "value") else str(r.status),
                      "subject_id": r.subject_id} for r in records],
     }
 
@@ -84,10 +85,11 @@ def my_marks(current_user: User = Depends(require_student), db: Session = Depend
     marks = (db.query(Mark, Exam).join(Exam, Mark.exam_id == Exam.id)
              .filter(Mark.student_id == current_user.id).all())
     return {"marks": [
-        {"id": m.id, "exam_title": e.title, "exam_type": e.exam_type.value,
+        {"id": m.id, "exam_title": e.title,
+         "exam_type": e.exam_type.value if hasattr(e.exam_type, "value") else str(e.exam_type),
          "subject_id": e.subject_id, "marks_obtained": m.marks_obtained,
          "total_marks": e.total_marks,
-         "percentage": round((m.marks_obtained / e.total_marks) * 100, 2),
+         "percentage": round((m.marks_obtained / e.total_marks) * 100, 2) if (e.total_marks and m.marks_obtained is not None and e.total_marks > 0) else 0.0,
          "grade": m.grade, "remarks": m.remarks, "exam_date": e.exam_date}
         for m, e in marks]}
 
@@ -103,7 +105,8 @@ def my_assignments(current_user: User = Depends(require_student), db: Session = 
             "id": a.id, "title": a.title, "description": a.description,
             "deadline": a.deadline, "subject_id": a.subject_id, "max_marks": a.max_marks,
             "submitted": sub is not None,
-            "submission": {"id": sub.id, "status": sub.status.value,
+            "submission": {"id": sub.id,
+                           "status": sub.status.value if hasattr(sub.status, "value") else str(sub.status),
                            "marks_obtained": sub.marks_obtained, "grade": sub.grade,
                            "submitted_at": sub.submitted_at} if sub else None,
         })
@@ -275,7 +278,7 @@ def get_student_dashboard(
     # Attendance calculation
     attendance_records = db.query(Attendance).filter(Attendance.student_id == student_id).all()
     total_att = len(attendance_records)
-    present_att = sum(1 for a in attendance_records if a.status.value in ("present", "late"))
+    present_att = sum(1 for a in attendance_records if (a.status.value if hasattr(a.status, "value") else str(a.status)).lower() in ("present", "late"))
     att_percentage = round((present_att / total_att) * 100, 2) if total_att > 0 else 0.0
 
     return {

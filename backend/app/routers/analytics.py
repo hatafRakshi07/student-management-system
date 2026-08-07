@@ -287,7 +287,7 @@ def subject_performance(
             "min_marks":      round(float(r.min_marks), 2),
             "max_marks":      round(float(r.max_marks), 2),
             "total_students": r.total_students,
-            "pass_rate":      round(float(r.pass_count or 0) / r.total_students * 100, 1),
+            "pass_rate":      round(float(r.pass_count or 0) / r.total_students * 100, 1) if (r.total_students and r.total_students > 0) else 0.0,
         }
         for r in rows
     ]

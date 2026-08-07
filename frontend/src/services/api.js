@@ -29,6 +29,9 @@ api.interceptors.response.use(
       window.location.href = '/login'
     } else if (error.response?.status === 403) {
       toast.error('Access denied')
+    } else if (error.response?.status === 500) {
+      const msg = error.response?.data?.error || error.response?.data?.detail || 'Server internal error (500). Please try again.'
+      toast.error(msg)
     }
     return Promise.reject(error)
   }

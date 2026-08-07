@@ -12,14 +12,19 @@ router = APIRouter(prefix="/api/notices", tags=["Notices"])
 
 @router.get("")
 def list_notices(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    role = current_user.role.value
+    role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    try:
+        t_role = TargetRole(role)
+    except Exception:
+        t_role = TargetRole.all
     notices = db.query(Notice).filter(
         Notice.is_active == 1,
-        (Notice.target_role == TargetRole.all) | (Notice.target_role == TargetRole(role))
+        (Notice.target_role == TargetRole.all) | (Notice.target_role == t_role)
     ).order_by(Notice.created_at.desc()).all()
     return {"notices": [
         {"id": n.id, "title": n.title, "description": n.description,
-         "created_at": n.created_at, "target_role": n.target_role.value,
+         "created_at": n.created_at,
+         "target_role": n.target_role.value if hasattr(n.target_role, 'value') else str(n.target_role),
          "created_by_id": n.created_by_id} for n in notices]}
 
 

@@ -23,7 +23,8 @@ def apply_leave(data: LeaveCreate, current_user: User = Depends(require_student)
 def my_leaves(current_user: User = Depends(require_student), db: Session = Depends(get_db)):
     leaves = db.query(Leave).filter(Leave.student_id == current_user.id).all()
     return {"leaves": [{"id": l.id, "reason": l.reason, "from_date": l.from_date,
-                         "to_date": l.to_date, "status": l.status.value,
+                         "to_date": l.to_date,
+                         "status": l.status.value if hasattr(l.status, "value") else str(l.status),
                          "applied_at": l.applied_at} for l in leaves]}
 
 
@@ -32,7 +33,8 @@ def all_leaves(_=Depends(require_teacher_or_admin), db: Session = Depends(get_db
     leaves = db.query(Leave).order_by(Leave.applied_at.desc()).all()
     return {"leaves": [{"id": l.id, "student_id": l.student_id, "reason": l.reason,
                          "from_date": l.from_date, "to_date": l.to_date,
-                         "status": l.status.value, "applied_at": l.applied_at} for l in leaves]}
+                         "status": l.status.value if hasattr(l.status, "value") else str(l.status),
+                         "applied_at": l.applied_at} for l in leaves]}
 
 
 @router.put("/{leave_id}/review")

@@ -85,15 +85,14 @@ async def add_security_headers_and_logging(request: Request, call_next):
 async def global_exception_handler(request: Request, exc: Exception):
     import logging
     logging.error(f"Unhandled Exception on {request.method} {request.url.path}: {exc}", exc_info=True)
-    if settings.debug:
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "Internal Server Error", "error": str(exc)}
-        )
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "An internal server error occurred. Please contact system administration."}
-    )
+    body = {"detail": "Internal Server Error", "error": str(exc)} if settings.debug else {
+        "detail": "An internal server error occurred. Please contact system administration.",
+        "error": str(exc)
+    }
+    res = JSONResponse(status_code=500, content=body)
+    res.headers["Access-Control-Allow-Origin"] = "*"
+    res.headers["Access-Control-Allow-Credentials"] = "true"
+    return res
 
 
 if os.path.exists(settings.upload_dir):

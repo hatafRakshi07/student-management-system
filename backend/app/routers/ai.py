@@ -24,7 +24,8 @@ def performance_prediction(
     db: Session = Depends(get_db),
 ):
     """Random Forest: classify student performance level with confidence scores."""
-    if current_user.role.value == "student" and current_user.id != student_id:
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    if user_role == "student" and current_user.id != student_id:
         raise HTTPException(status_code=403, detail="Access denied")
     return predict_performance(student_id, db)
 
@@ -36,7 +37,8 @@ def grade_prediction(
     db: Session = Depends(get_db),
 ):
     """Linear Regression: predict final exam marks and letter grade."""
-    if current_user.role.value == "student" and current_user.id != student_id:
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    if user_role == "student" and current_user.id != student_id:
         raise HTTPException(status_code=403, detail="Access denied")
     return get_grade_prediction(student_id, db)
 
@@ -47,7 +49,8 @@ def ai_recommendations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.role.value == "student" and current_user.id != student_id:
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    if user_role == "student" and current_user.id != student_id:
         raise HTTPException(status_code=403, detail="Access denied")
     return get_ai_recommendations(student_id, db)
 

@@ -26,18 +26,19 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 def _user_out(user: User, db: Session) -> dict:
+    role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
     data = {
         "id": user.id, "email": user.email, "full_name": user.full_name,
-        "role": user.role.value, "phone": user.phone,
+        "role": role_val, "phone": user.phone,
         "profile_photo": user.profile_photo, "is_active": user.is_active,
         "created_at": user.created_at, "last_login": user.last_login,
     }
-    if user.role == UserRole.student and user.student_profile:
+    if (user.role == UserRole.student or role_val == "student") and user.student_profile:
         sp = user.student_profile
         data.update({"roll_number": sp.roll_number, "department": sp.department,
                      "class_name": sp.class_name, "section": sp.section,
                      "semester": sp.semester, "year": sp.year})
-    if user.role == UserRole.teacher and user.teacher_profile:
+    if (user.role == UserRole.teacher or role_val == "teacher") and user.teacher_profile:
         tp = user.teacher_profile
         data.update({"employee_id": tp.employee_id, "department": tp.department})
     return data
@@ -80,14 +81,15 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
     
     try:
         user.last_login = datetime.utcnow()
-        ip = get_remote_address(request)
+        ip = request.client.host if (request and request.client) else "127.0.0.1"
         db.add(AuditLog(user_id=user.id, action="login", ip_address=ip))
         db.commit()
     except Exception:
         db.rollback()
 
-    token = create_access_token({"sub": str(user.id), "role": user.role.value})
-    refresh_token = create_refresh_token({"sub": str(user.id), "role": user.role.value})
+    user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+    token = create_access_token({"sub": str(user.id), "role": user_role})
+    refresh_token = create_refresh_token({"sub": str(user.id), "role": user_role})
     return {
         "access_token": token,
         "refresh_token": refresh_token,
@@ -106,8 +108,9 @@ def refresh_token(request_data: dict, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == int(user_id)).first()
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or not found")
-    new_access_token = create_access_token({"sub": str(user.id), "role": user.role.value})
-    new_refresh_token = create_refresh_token({"sub": str(user.id), "role": user.role.value})
+    user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+    new_access_token = create_access_token({"sub": str(user.id), "role": user_role})
+    new_refresh_token = create_refresh_token({"sub": str(user.id), "role": user_role})
     return {
         "access_token": new_access_token,
         "refresh_token": new_refresh_token,
