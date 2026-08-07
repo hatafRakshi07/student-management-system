@@ -11,7 +11,11 @@ import os
 from app.database import create_tables, check_connection
 from app.config import settings
 from app.utils.rate_limit import limiter
-from app.services.scheduler import start_scheduler, shutdown_scheduler
+try:
+    from app.services.scheduler import start_scheduler, shutdown_scheduler
+except Exception:
+    start_scheduler = lambda: None
+    shutdown_scheduler = lambda: None
 from app.routers import (
     auth, students, teachers, parents,
     attendance, assignments, exams, fees, leaves,
