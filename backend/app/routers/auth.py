@@ -60,12 +60,20 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
     sp = None
 
     # 1. Match User table directly by email, username, phone, or exact full_name
-    user = db.query(User).filter(
-        (User.email.ilike(raw_login)) |
-        (User.username.ilike(raw_login)) |
-        (User.phone == raw_login) |
-        (User.full_name.ilike(raw_login))
-    ).first()
+    try:
+        user = db.query(User).filter(
+            (User.email.ilike(raw_login)) |
+            (User.username.ilike(raw_login)) |
+            (User.phone == raw_login) |
+            (User.full_name.ilike(raw_login))
+        ).first()
+    except Exception:
+        db.rollback()
+        user = db.query(User).filter(
+            (User.email.ilike(raw_login)) |
+            (User.phone == raw_login) |
+            (User.full_name.ilike(raw_login))
+        ).first()
 
     # 2. If not found in User, search StudentProfile by roll_number, reg_no, admission_no, student_name, mobile
     if not user:

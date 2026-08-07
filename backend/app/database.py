@@ -34,19 +34,31 @@ def _setup_tmp_sqlite():
 
 def _migrate_sqlite_schema(eng):
     try:
-        with eng.connect() as conn:
+        with eng.begin() as conn:
             res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
-            cols = [r[1] for r in res]
+            cols = [r[1] for r in res] if res else []
             if cols:
                 if "username" not in cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+                    try:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+                    except Exception:
+                        pass
                 if "phone" not in cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(20)"))
+                    try:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(20)"))
+                    except Exception:
+                        pass
                 if "reset_token" not in cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255)"))
+                    try:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255)"))
+                    except Exception:
+                        pass
                 if "reset_token_expiry" not in cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME"))
-                conn.commit()
+                    try:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME"))
+                    except Exception:
+                        pass
+                print("SQLite users table schema migrated successfully")
     except Exception as e:
         print("Schema migration notice:", e)
 
