@@ -3,21 +3,27 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
 
-_is_sqlite = settings.database_url.startswith("sqlite")
+db_url = settings.database_url
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif db_url.startswith("postgresql://") and "+psycopg2" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+_is_sqlite = db_url.startswith("sqlite")
 
 if _is_sqlite:
     engine = create_engine(
-        settings.database_url,
+        db_url,
         connect_args={"check_same_thread": False},
         echo=settings.debug,
     )
 else:
     engine = create_engine(
-        settings.database_url,
+        db_url,
         pool_pre_ping=True,
         pool_recycle=3600,
-        pool_size=10,
-        max_overflow=20,
+        pool_size=5,
+        max_overflow=10,
         echo=settings.debug,
     )
 

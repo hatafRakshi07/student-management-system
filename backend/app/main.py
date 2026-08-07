@@ -23,13 +23,25 @@ from app.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    check_connection()
-    create_tables()
-    for sub in ("photos", "submissions", "assignments"):
-        os.makedirs(os.path.join(settings.upload_dir, sub), exist_ok=True)
-    start_scheduler()
+    try:
+        check_connection()
+        create_tables()
+    except Exception as err:
+        print("Database initialization notice:", err)
+
+    if not os.getenv("VERCEL"):
+        for sub in ("photos", "submissions", "assignments"):
+            os.makedirs(os.path.join(settings.upload_dir, sub), exist_ok=True)
+        try:
+            start_scheduler()
+        except Exception as e:
+            print("Scheduler notice:", e)
     yield
-    shutdown_scheduler()
+    if not os.getenv("VERCEL"):
+        try:
+            shutdown_scheduler()
+        except Exception:
+            pass
 
 
 app = FastAPI(
