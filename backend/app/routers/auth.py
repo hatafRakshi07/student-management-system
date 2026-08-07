@@ -93,25 +93,40 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
 
     # 2. If not found in User, search StudentProfile by roll_number, reg_no, admission_no, student_name, mobile
     if not user:
-        sp = db.query(StudentProfile).filter(
-            (StudentProfile.roll_number.ilike(raw_login)) |
-            (StudentProfile.reg_no.ilike(raw_login)) |
-            (StudentProfile.admission_no.ilike(raw_login)) |
-            (StudentProfile.student_name.ilike(raw_login)) |
-            (StudentProfile.mobile == raw_login) |
-            (StudentProfile.father_mobile == raw_login)
-        ).first()
+        try:
+            sp = db.query(StudentProfile).filter(
+                (StudentProfile.roll_number.ilike(raw_login)) |
+                (StudentProfile.reg_no.ilike(raw_login)) |
+                (StudentProfile.admission_no.ilike(raw_login)) |
+                (StudentProfile.student_name.ilike(raw_login)) |
+                (StudentProfile.mobile == raw_login) |
+                (StudentProfile.father_mobile == raw_login)
+            ).first()
 
-        if sp and sp.user_id:
-            user = db.query(User).filter(User.id == sp.user_id).first()
+            if sp and sp.user_id:
+                user = db.query(User).filter(User.id == sp.user_id).first()
+        except Exception:
+            db.rollback()
 
-    # 3. Partial / substring match on full_name or student_name if still not found
+    # 3. Match TeacherProfile by employee_id
+    if not user:
+        try:
+            tp = db.query(TeacherProfile).filter(TeacherProfile.employee_id.ilike(raw_login)).first()
+            if tp and tp.user_id:
+                user = db.query(User).filter(User.id == tp.user_id).first()
+        except Exception:
+            db.rollback()
+
+    # 4. Partial / substring match on full_name or student_name if still not found
     if not user:
         user = db.query(User).filter(User.full_name.ilike(f"%{raw_login}%")).first()
     if not user:
-        sp = db.query(StudentProfile).filter(StudentProfile.student_name.ilike(f"%{raw_login}%")).first()
-        if sp and sp.user_id:
-            user = db.query(User).filter(User.id == sp.user_id).first()
+        try:
+            sp = db.query(StudentProfile).filter(StudentProfile.student_name.ilike(f"%{raw_login}%")).first()
+            if sp and sp.user_id:
+                user = db.query(User).filter(User.id == sp.user_id).first()
+        except Exception:
+            db.rollback()
 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
