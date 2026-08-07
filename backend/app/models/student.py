@@ -55,21 +55,30 @@ class StudentProfile(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="student_profile")
-    academic_history = relationship(
-        "StudentAcademicHistory",
-        primaryjoin="StudentProfile.user_id == foreign(StudentAcademicHistory.student_id)",
-        viewonly=True
-    )
-    promotions = relationship(
-        "StudentPromotion",
-        primaryjoin="StudentProfile.user_id == foreign(StudentPromotion.student_id)",
-        viewonly=True
-    )
-    documents = relationship(
-        "StudentDocument",
-        primaryjoin="StudentProfile.user_id == foreign(StudentDocument.student_id)",
-        viewonly=True
-    )
+
+    @property
+    def academic_history(self):
+        from sqlalchemy.orm import object_session
+        session = object_session(self)
+        if not session:
+            return []
+        return session.query(StudentAcademicHistory).filter(StudentAcademicHistory.student_id == self.user_id).all()
+
+    @property
+    def promotions(self):
+        from sqlalchemy.orm import object_session
+        session = object_session(self)
+        if not session:
+            return []
+        return session.query(StudentPromotion).filter(StudentPromotion.student_id == self.user_id).all()
+
+    @property
+    def documents(self):
+        from sqlalchemy.orm import object_session
+        session = object_session(self)
+        if not session:
+            return []
+        return session.query(StudentDocument).filter(StudentDocument.student_id == self.user_id).all()
 
 
 
