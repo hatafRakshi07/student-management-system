@@ -15,7 +15,7 @@ class Subject(Base):
     semester = Column(Integer, nullable=True)
     credits = Column(Integer, default=3)
 
-    teacher = relationship("User", foreign_keys=[teacher_id], backref="subjects_teaching")
+    teacher = relationship("User", foreign_keys=[teacher_id])
     assignments = relationship("Assignment", back_populates="subject")
     attendance_records = relationship("Attendance", back_populates="subject")
     exams = relationship("Exam", back_populates="subject")

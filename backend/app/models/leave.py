@@ -24,5 +24,5 @@ class Leave(Base):
     reviewed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     review_remarks = Column(Text, nullable=True)
 
-    student = relationship("User", foreign_keys=[student_id], backref="leaves")
-    reviewed_by = relationship("User", foreign_keys=[reviewed_by_id], backref="reviewed_leaves")
+    student = relationship("User", foreign_keys=[student_id])
+    reviewed_by = relationship("User", foreign_keys=[reviewed_by_id])

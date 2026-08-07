@@ -88,7 +88,7 @@ class StudentAcademicHistory(Base):
     status = Column(String(50), default="ACTIVE")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    student = relationship("User", foreign_keys=[student_id], backref="user_academic_history")
+    student = relationship("User", foreign_keys=[student_id])
 
 
 class StudentPromotion(Base):
@@ -103,7 +103,7 @@ class StudentPromotion(Base):
     promotion_date = Column(Date, default=datetime.utcnow)
     remarks = Column(String(255), nullable=True)
 
-    student = relationship("User", foreign_keys=[student_id], backref="user_promotions")
+    student = relationship("User", foreign_keys=[student_id])
 
 
 class StudentDocument(Base):
@@ -116,7 +116,7 @@ class StudentDocument(Base):
     file_path = Column(String(500), nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
 
-    student = relationship("User", foreign_keys=[student_id], backref="user_documents")
+    student = relationship("User", foreign_keys=[student_id])
 
 
 class ClassMaster(Base):

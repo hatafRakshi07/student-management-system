@@ -39,7 +39,7 @@ class ParentProfile(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
 
-    user = relationship("User", foreign_keys=[user_id], backref="parent_profile")
+    user = relationship("User", foreign_keys=[user_id])
     student_mappings = relationship("ParentStudentMapping", back_populates="parent", cascade="all, delete-orphan")
     ptm_requests = relationship("PTMRequest", back_populates="parent", cascade="all, delete-orphan")
 

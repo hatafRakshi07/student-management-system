@@ -54,7 +54,7 @@ class StaffDetail(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user = relationship("User", foreign_keys=[user_id], backref="staff_detail")
+    user = relationship("User", foreign_keys=[user_id])
     bank_account = relationship("StaffBankDetail", back_populates="staff", uselist=False, cascade="all, delete-orphan")
     salary_structure = relationship("StaffSalaryStructure", back_populates="staff", uselist=False, cascade="all, delete-orphan")
     salary_transactions = relationship("SalaryTransaction", back_populates="staff", cascade="all, delete-orphan")

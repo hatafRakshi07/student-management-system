@@ -26,7 +26,7 @@ class Fee(Base):
     transaction_id = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    student = relationship("User", foreign_keys=[student_id], backref="fees")
+    student = relationship("User", foreign_keys=[student_id])
 
 
 class FeeTransaction(Base):
@@ -69,7 +69,7 @@ class FeeTransaction(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    student = relationship("User", foreign_keys=[student_id], backref="fee_transactions")
+    student = relationship("User", foreign_keys=[student_id])
 
 
 class FeeInstallment(Base):
@@ -154,7 +154,7 @@ class FeeReceipt(Base):
     session = Column(String(50), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    student = relationship("User", foreign_keys=[student_id], backref="fee_receipts")
+    student = relationship("User", foreign_keys=[student_id])
 
 
 class FeeSummary(Base):
@@ -174,7 +174,7 @@ class FeeSummary(Base):
     current_status = Column(String(50), default="UNPAID")
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    student = relationship("User", foreign_keys=[student_id], backref="fee_summary")
+    student = relationship("User", foreign_keys=[student_id])
 
 
 class Payment(Base):
@@ -192,6 +192,6 @@ class Payment(Base):
     payment_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    student = relationship("User", foreign_keys=[student_id], backref="payments")
-    receipt = relationship("FeeReceipt", foreign_keys=[receipt_id], backref="payments")
+    student = relationship("User", foreign_keys=[student_id])
+    receipt = relationship("FeeReceipt", foreign_keys=[receipt_id])
 

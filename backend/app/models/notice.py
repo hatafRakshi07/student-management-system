@@ -24,4 +24,4 @@ class Notice(Base):
     target_role = Column(SAEnum(TargetRole), default=TargetRole.all)
     is_active = Column(Integer, default=1)
 
-    created_by = relationship("User", foreign_keys=[created_by_id], backref="notices")
+    created_by = relationship("User", foreign_keys=[created_by_id])

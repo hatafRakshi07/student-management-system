@@ -69,7 +69,7 @@ class StudentAttendanceRecord(Base):
         UniqueConstraint('student_id', 'date', 'lecture_no', 'subject_id', name='uq_student_lecture_attendance'),
     )
 
-    student = relationship("User", foreign_keys=[student_id], backref="student_attendance_records")
+    student = relationship("User", foreign_keys=[student_id])
     marked_by = relationship("User", foreign_keys=[marked_by_id])
     subject = relationship("Subject")
 
@@ -96,7 +96,7 @@ class StaffAttendanceRecord(Base):
         UniqueConstraint('staff_id', 'date', name='uq_staff_daily_attendance'),
     )
 
-    staff = relationship("User", foreign_keys=[staff_id], backref="staff_attendance_records")
+    staff = relationship("User", foreign_keys=[staff_id])
 
 
 class AttendanceSummary(Base):
@@ -116,7 +116,7 @@ class AttendanceSummary(Base):
     total_working_hours = Column(Float, default=0.0)  # Staff only
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user = relationship("User", foreign_keys=[user_id], backref="attendance_summary")
+    user = relationship("User", foreign_keys=[user_id])
 
 
 class HolidayRecord(Base):

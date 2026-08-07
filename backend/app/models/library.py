@@ -75,7 +75,7 @@ class LibraryMemberRecord(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    user = relationship("User", foreign_keys=[user_id], backref="library_member")
+    user = relationship("User", foreign_keys=[user_id])
     issues = relationship("LibraryIssueTransaction", back_populates="member", cascade="all, delete-orphan")
 
 

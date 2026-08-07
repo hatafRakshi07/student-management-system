@@ -28,7 +28,7 @@ class Assignment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     subject = relationship("Subject", back_populates="assignments")
-    teacher = relationship("User", foreign_keys=[teacher_id], backref="created_assignments")
+    teacher = relationship("User", foreign_keys=[teacher_id])
     submissions = relationship("Submission", back_populates="assignment", cascade="all, delete-orphan")
 
 
@@ -47,4 +47,4 @@ class Submission(Base):
     status = Column(SAEnum(SubmissionStatus), default=SubmissionStatus.submitted)
 
     assignment = relationship("Assignment", back_populates="submissions")
-    student = relationship("User", foreign_keys=[student_id], backref="submissions")
+    student = relationship("User", foreign_keys=[student_id])

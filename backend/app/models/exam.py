@@ -45,7 +45,7 @@ class ExamSchedule(Base):
     status = Column(String(50), default="PUBLISHED")  # DRAFT, PUBLISHED, COMPLETED
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    subject = relationship("Subject", backref="exam_schedules")
+    subject = relationship("Subject")
     mark_records = relationship("MarkRecord", back_populates="exam", cascade="all, delete-orphan")
 
 
@@ -77,7 +77,7 @@ class MarkRecord(Base):
         UniqueConstraint('student_id', 'exam_id', name='uq_student_exam_mark'),
     )
 
-    student = relationship("User", foreign_keys=[student_id], backref="exam_marks")
+    student = relationship("User", foreign_keys=[student_id])
     exam = relationship("ExamSchedule", back_populates="mark_records")
     subject = relationship("Subject")
     marked_by = relationship("User", foreign_keys=[marked_by_id])
@@ -114,7 +114,7 @@ class ResultSummary(Base):
         UniqueConstraint('student_id', 'session_year', 'semester', name='uq_student_semester_result'),
     )
 
-    student = relationship("User", foreign_keys=[student_id], backref="result_summaries")
+    student = relationship("User", foreign_keys=[student_id])
 
 
 class GradeSystemRule(Base):

@@ -17,4 +17,4 @@ class Timetable(Base):
     room = Column(String(50), nullable=True)
 
     subject = relationship("Subject", back_populates="timetable_slots")
-    teacher = relationship("User", foreign_keys=[teacher_id], backref="timetable_slots")
+    teacher = relationship("User", foreign_keys=[teacher_id])
