@@ -178,4 +178,4 @@ class Attendance(Base):
 
     student = relationship("User", foreign_keys=[student_id])
     subject = relationship("Subject")
-    marked_by = relationship("User", foreign_keys=[marked_by_id])
+    marked_by = relationship("User", foreign_keys=[marked_by_id], back_populates="attendance_marked")

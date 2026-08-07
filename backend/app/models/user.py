@@ -34,6 +34,6 @@ class User(Base):
     teacher_profile = relationship("TeacherProfile", back_populates="user", uselist=False)
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     attendance_marked = relationship(
-        "Attendance", foreign_keys="Attendance.marked_by_id", back_populates="marked_by"
+        "Attendance", foreign_keys="[Attendance.marked_by_id]", back_populates="marked_by"
     )
     audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
