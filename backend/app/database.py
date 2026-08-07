@@ -12,7 +12,7 @@ Base = declarative_base()
 
 
 def _setup_tmp_sqlite():
-    return "sqlite:////tmp/student_management.db"
+    return "sqlite:////tmp/student_management_v2.db"
 
 
 def _init_engine():
@@ -60,7 +60,7 @@ def _init_engine():
         return test_eng
     except Exception as exc:
         print(f"PostgreSQL connection failed ({exc}). Falling back to SQLite database...")
-        fallback_url = _setup_tmp_sqlite() if os.getenv("VERCEL") else "sqlite:///./student_management.db"
+        fallback_url = _setup_tmp_sqlite() if os.getenv("VERCEL") else "sqlite:///./student_management_v2.db"
         eng = create_engine(
             fallback_url,
             connect_args={"check_same_thread": False},

@@ -29,20 +29,36 @@ def _user_out(user: User, db: Session) -> dict:
     role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
     data = {
         "id": user.id, "email": user.email, "full_name": user.full_name,
-        "role": role_val, "phone": user.phone,
-        "profile_photo": user.profile_photo, "is_active": user.is_active,
-        "created_at": user.created_at, "last_login": user.last_login,
+        "role": role_val, "phone": getattr(user, 'phone', None),
+        "profile_photo": getattr(user, 'profile_photo', None), "is_active": getattr(user, 'is_active', True),
+        "created_at": getattr(user, 'created_at', None), "last_login": getattr(user, 'last_login', None),
     }
     if (user.role == UserRole.student or role_val == "student"):
-        sp = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
-        if sp:
-            data.update({"roll_number": sp.roll_number, "department": sp.department,
-                         "class_name": sp.class_name, "section": sp.section,
-                         "semester": sp.semester, "year": sp.year})
+        try:
+            sp = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
+            if sp:
+                data.update({
+                    "roll_number": getattr(sp, 'roll_number', None),
+                    "department": getattr(sp, 'department', None),
+                    "class_name": getattr(sp, 'class_name', None),
+                    "section": getattr(sp, 'section', None),
+                    "semester": getattr(sp, 'semester', None),
+                    "year": getattr(sp, 'year', None),
+                    "student_name": getattr(sp, 'student_name', user.full_name),
+                    "scholar_no": getattr(sp, 'reg_no', None) or getattr(sp, 'admission_no', None),
+                })
+        except Exception:
+            db.rollback()
     if (user.role == UserRole.teacher or role_val == "teacher"):
-        tp = db.query(TeacherProfile).filter(TeacherProfile.user_id == user.id).first()
-        if tp:
-            data.update({"employee_id": tp.employee_id, "department": tp.department})
+        try:
+            tp = db.query(TeacherProfile).filter(TeacherProfile.user_id == user.id).first()
+            if tp:
+                data.update({
+                    "employee_id": getattr(tp, 'employee_id', None),
+                    "department": getattr(tp, 'department', None),
+                })
+        except Exception:
+            db.rollback()
     return data
 
 
