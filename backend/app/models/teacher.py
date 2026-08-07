@@ -14,4 +14,4 @@ class TeacherProfile(Base):
     experience_years = Column(Integer, nullable=True)
     subjects_taught = Column(String(500), nullable=True)
 
-    user = relationship("User", back_populates="teacher_profile")
+    user = relationship("User", foreign_keys=[user_id], back_populates="teacher_profile")

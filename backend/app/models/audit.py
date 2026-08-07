@@ -14,4 +14,4 @@ class AuditLog(Base):
     ip_address = Column(String(45), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    user = relationship("User", back_populates="audit_logs")
+    user = relationship("User", foreign_keys=[user_id], back_populates="audit_logs")
