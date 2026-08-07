@@ -7,60 +7,12 @@ from sqlalchemy.orm import sessionmaker, configure_mappers
 from app.config import settings
 
 import os
-import shutil
 
 Base = declarative_base()
 
 
 def _setup_tmp_sqlite():
-    tmp_db_path = "/tmp/student_management.db"
-    if not os.path.exists(tmp_db_path) or os.path.getsize(tmp_db_path) == 0:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        candidates = [
-            os.path.join(base_dir, "..", "student_management.db"),
-            os.path.join(base_dir, "..", "..", "student_management.db"),
-            os.path.abspath("student_management.db"),
-        ]
-        for src in candidates:
-            if os.path.exists(src) and os.path.getsize(src) > 0:
-                try:
-                    shutil.copyfile(src, tmp_db_path)
-                    print(f"Vercel: Copied DB from {src} to {tmp_db_path}")
-                    break
-                except Exception as e:
-                    print("Vercel DB copy notice:", e)
-    return f"sqlite:///{tmp_db_path}"
-
-
-def _migrate_sqlite_schema(eng):
-    try:
-        with eng.begin() as conn:
-            res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
-            cols = [r[1] for r in res] if res else []
-            if cols:
-                if "username" not in cols:
-                    try:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
-                    except Exception:
-                        pass
-                if "phone" not in cols:
-                    try:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(20)"))
-                    except Exception:
-                        pass
-                if "reset_token" not in cols:
-                    try:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255)"))
-                    except Exception:
-                        pass
-                if "reset_token_expiry" not in cols:
-                    try:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME"))
-                    except Exception:
-                        pass
-                print("SQLite users table schema migrated successfully")
-    except Exception as e:
-        print("Schema migration notice:", e)
+    return "sqlite:////tmp/student_management.db"
 
 
 def _init_engine():
@@ -84,7 +36,13 @@ def _init_engine():
             connect_args={"check_same_thread": False},
             echo=False,
         )
-        _migrate_sqlite_schema(eng)
+        try:
+            import app.models  # noqa: F401
+            Base.metadata.create_all(bind=eng)
+            from app.seed import seed_database
+            seed_database()
+        except Exception as e:
+            print("SQLite init notice:", e)
         return eng
 
     # For PostgreSQL / Supabase, attempt connection test with 2s timeout
@@ -108,7 +66,13 @@ def _init_engine():
             connect_args={"check_same_thread": False},
             echo=False,
         )
-        _migrate_sqlite_schema(eng)
+        try:
+            import app.models  # noqa: F401
+            Base.metadata.create_all(bind=eng)
+            from app.seed import seed_database
+            seed_database()
+        except Exception as seed_err:
+            print("Fallback DB seed notice:", seed_err)
         return eng
 
 
@@ -142,10 +106,7 @@ def create_tables():
         print("Mapper configuration notice:", map_err)
     try:
         Base.metadata.create_all(bind=engine)
-        _migrate_sqlite_schema(engine)
-        print("Database tables created.")
-        if not os.getenv("VERCEL"):
-            from app.seed import seed_database
-            seed_database()
+        from app.seed import seed_database
+        seed_database()
     except Exception as err:
         print("Auto-seed notice:", err)
