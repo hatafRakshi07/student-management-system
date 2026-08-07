@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SAEnum
-from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 from app.database import Base
@@ -29,5 +28,20 @@ class User(Base):
     reset_token = Column(String(255), nullable=True)
     reset_token_expiry = Column(DateTime, nullable=True)
 
-    student_profile = relationship("StudentProfile", foreign_keys="StudentProfile.user_id", uselist=False)
-    teacher_profile = relationship("TeacherProfile", foreign_keys="TeacherProfile.user_id", uselist=False)
+    @property
+    def student_profile(self):
+        from sqlalchemy.orm import object_session
+        session = object_session(self)
+        if not session:
+            return None
+        from app.models.student import StudentProfile
+        return session.query(StudentProfile).filter(StudentProfile.user_id == self.id).first()
+
+    @property
+    def teacher_profile(self):
+        from sqlalchemy.orm import object_session
+        session = object_session(self)
+        if not session:
+            return None
+        from app.models.teacher import TeacherProfile
+        return session.query(TeacherProfile).filter(TeacherProfile.user_id == self.id).first()
