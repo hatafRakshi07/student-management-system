@@ -17,6 +17,4 @@ class Subject(Base):
 
     teacher = relationship("User", foreign_keys=[teacher_id])
     assignments = relationship("Assignment", back_populates="subject")
-    attendance_records = relationship("Attendance", back_populates="subject")
-    exams = relationship("Exam", back_populates="subject")
     timetable_slots = relationship("Timetable", back_populates="subject")
