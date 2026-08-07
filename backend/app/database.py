@@ -29,96 +29,86 @@ def _setup_tmp_sqlite():
     return f"sqlite:///{tmp_db_path}"
 
 
-def _get_target_db_url():
+def _init_engine():
     db_url = settings.database_url
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
     elif db_url.startswith("postgresql://") and "+psycopg2" not in db_url:
         db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-    # Fix direct Supabase host to use port 6543 if direct 5432 host is configured
-    if "supabase.co:5432" in db_url:
+    if "supabase.co" in db_url and ":5432" in db_url:
         db_url = db_url.replace(":5432", ":6543")
 
     _is_sqlite = db_url.startswith("sqlite")
     if os.getenv("VERCEL") and _is_sqlite:
         db_url = _setup_tmp_sqlite()
-    return db_url
 
-
-def _create_db_engine(target_url):
-    if target_url.startswith("sqlite"):
+    if _is_sqlite:
+        print(f"Using SQLite database: {db_url}")
         return create_engine(
-            target_url,
+            db_url,
             connect_args={"check_same_thread": False},
             echo=settings.debug,
         )
-    return create_engine(
-        target_url,
-        pool_pre_ping=True,
-        pool_recycle=300,
-        connect_args={"connect_timeout": 5},
-        echo=settings.debug,
-    )
+
+    # For PostgreSQL / Supabase, attempt connection test with 3s timeout
+    try:
+        test_eng = create_engine(
+            db_url,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            connect_args={"connect_timeout": 3},
+            echo=settings.debug,
+        )
+        with test_eng.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print(f"Connected to PostgreSQL database cleanly")
+        return test_eng
+    except Exception as exc:
+        print(f"PostgreSQL connection failed ({exc}). Falling back to SQLite database...")
+        fallback_url = _setup_tmp_sqlite() if os.getenv("VERCEL") else "sqlite:///./student_management.db"
+        eng = create_engine(
+            fallback_url,
+            connect_args={"check_same_thread": False},
+            echo=settings.debug,
+        )
+        try:
+            import app.models  # noqa: F401
+            Base.metadata.create_all(bind=eng)
+            from app.seed import seed_database
+            seed_database()
+        except Exception as seed_err:
+            print("Fallback DB seed notice:", seed_err)
+        return eng
 
 
-engine = _create_db_engine(_get_target_db_url())
+engine = _init_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def check_connection():
-    global engine, SessionLocal
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         return True
-    except Exception as exc:
-        print(f"Primary DB connection failed ({exc}). Falling back to SQLite...")
-        try:
-            fallback_url = _setup_tmp_sqlite() if os.getenv("VERCEL") else "sqlite:///./student_management.db"
-            engine = _create_db_engine(fallback_url)
-            SessionLocal.configure(bind=engine)
-            create_tables()
-            return True
-        except Exception as fallback_exc:
-            print(f"Fallback DB error: {fallback_exc}")
-            return False
+    except Exception:
+        return False
 
 
 def get_db():
-    global engine, SessionLocal
-    db = None
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        db.execute(text("SELECT 1"))
-        yield db
-    except Exception as exc:
-        print(f"DB session error: {exc}. Retrying with fallback SQLite DB...")
-        if db:
-            try:
-                db.close()
-            except Exception:
-                pass
-        fallback_url = _setup_tmp_sqlite() if os.getenv("VERCEL") else "sqlite:///./student_management.db"
-        engine = _create_db_engine(fallback_url)
-        SessionLocal.configure(bind=engine)
-        create_tables()
-        db = SessionLocal()
         yield db
     finally:
-        if db:
-            try:
-                db.close()
-            except Exception:
-                pass
+        db.close()
 
 
 def create_tables():
     """Create all tables defined in models and auto-seed if needed."""
     import app.models  # noqa: F401 – ensure all models are imported
-    Base.metadata.create_all(bind=engine)
-    print("Database tables created.")
     try:
+        Base.metadata.create_all(bind=engine)
+        print("Database tables created.")
         from app.seed import seed_database
         seed_database()
     except Exception as err:
