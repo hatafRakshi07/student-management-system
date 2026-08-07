@@ -33,14 +33,16 @@ def _user_out(user: User, db: Session) -> dict:
         "profile_photo": user.profile_photo, "is_active": user.is_active,
         "created_at": user.created_at, "last_login": user.last_login,
     }
-    if (user.role == UserRole.student or role_val == "student") and user.student_profile:
-        sp = user.student_profile
-        data.update({"roll_number": sp.roll_number, "department": sp.department,
-                     "class_name": sp.class_name, "section": sp.section,
-                     "semester": sp.semester, "year": sp.year})
-    if (user.role == UserRole.teacher or role_val == "teacher") and user.teacher_profile:
-        tp = user.teacher_profile
-        data.update({"employee_id": tp.employee_id, "department": tp.department})
+    if (user.role == UserRole.student or role_val == "student"):
+        sp = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
+        if sp:
+            data.update({"roll_number": sp.roll_number, "department": sp.department,
+                         "class_name": sp.class_name, "section": sp.section,
+                         "semester": sp.semester, "year": sp.year})
+    if (user.role == UserRole.teacher or role_val == "teacher"):
+        tp = db.query(TeacherProfile).filter(TeacherProfile.user_id == user.id).first()
+        if tp:
+            data.update({"employee_id": tp.employee_id, "department": tp.department})
     return data
 
 
