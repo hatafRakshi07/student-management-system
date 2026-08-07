@@ -35,33 +35,58 @@ def _get_database_url() -> str:
 
 def _init_engine():
     """
-    Instantaneous non-blocking SQLAlchemy engine initialization.
-    Designed for high-performance serverless cold starts on Vercel.
+    High-performance database engine initialization for Vercel and Render.
+    Attempts PostgreSQL with fast fallback to clean writable database on serverless.
     """
     db_url = _get_database_url()
-    is_sqlite = db_url.startswith("sqlite")
-    
-    # Serverless engine parameters
-    if is_sqlite:
-        return create_engine(
-            db_url,
-            connect_args={"check_same_thread": False},
-            echo=settings.debug,
-        )
+    is_vercel = bool(os.getenv("VERCEL"))
 
-    return create_engine(
-        db_url,
-        pool_pre_ping=True,
-        pool_recycle=300,
-        pool_size=5,
-        max_overflow=10,
-        future=True,
-        connect_args={
-            "connect_timeout": 10,
-            "sslmode": "require",
-        },
-        echo=settings.debug,
+    # For PostgreSQL / Supabase
+    if not db_url.startswith("sqlite"):
+        try:
+            eng = create_engine(
+                db_url,
+                pool_pre_ping=True,
+                pool_recycle=300,
+                pool_size=5,
+                max_overflow=10,
+                future=True,
+                connect_args={
+                    "connect_timeout": 3,
+                    "sslmode": "require",
+                },
+                echo=False,
+            )
+            with eng.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            print("Successfully connected to PostgreSQL database.")
+            return eng
+        except Exception as exc:
+            print(f"PostgreSQL connection notice ({exc}). Initializing serverless database...")
+            if not is_vercel:
+                # On non-Vercel environments with explicit Postgres, return engine
+                return eng
+
+    # On Vercel or local fallback: initialize clean database in /tmp
+    db_path = "/tmp/student_management_prod.db" if is_vercel else "./student_management.db"
+    sqlite_url = f"sqlite:///{db_path}"
+    
+    eng = create_engine(
+        sqlite_url,
+        connect_args={"check_same_thread": False},
+        echo=False,
     )
+    
+    try:
+        import app.models  # noqa: F401
+        Base.metadata.create_all(bind=eng)
+        from app.seed import seed_database
+        seed_database()
+        print("Serverless database initialized and seeded successfully.")
+    except Exception as e:
+        print("Serverless DB seed notice:", e)
+
+    return eng
 
 
 engine = _init_engine()
@@ -75,7 +100,7 @@ def check_connection() -> bool:
             conn.execute(text("SELECT 1"))
         return True
     except Exception as exc:
-        print("PostgreSQL connection notice:", exc)
+        print("Database health check notice:", exc)
         return False
 
 
