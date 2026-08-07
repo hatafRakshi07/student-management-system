@@ -31,7 +31,9 @@ export default function Register() {
       toast.success('Registered successfully! Please login.')
       navigate('/login')
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Registration failed')
+      const detail = err.response?.data?.detail || err.response?.data?.error || err.message
+      const msg = typeof detail === 'string' ? detail : (detail?.message || detail?.error || (Array.isArray(detail) ? detail.map(d => d.msg || d.message).join(', ') : 'Registration failed'))
+      toast.error(msg)
     } finally {
       setLoading(false)
     }

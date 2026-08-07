@@ -38,7 +38,9 @@ export default function Login() {
       navigate(routes[user.role] || '/')
       toast.success(`Welcome back, ${user.full_name}!`)
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Login failed')
+      const detail = err.response?.data?.detail || err.response?.data?.error || err.message
+      const msg = typeof detail === 'string' ? detail : (detail?.message || detail?.error || (Array.isArray(detail) ? detail.map(d => d.msg || d.message).join(', ') : 'Login failed'))
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
