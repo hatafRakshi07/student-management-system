@@ -32,6 +32,25 @@ def _setup_tmp_sqlite():
     return f"sqlite:///{tmp_db_path}"
 
 
+def _migrate_sqlite_schema(eng):
+    try:
+        with eng.connect() as conn:
+            res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            cols = [r[1] for r in res]
+            if cols:
+                if "username" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+                if "phone" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(20)"))
+                if "reset_token" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255)"))
+                if "reset_token_expiry" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME"))
+                conn.commit()
+    except Exception as e:
+        print("Schema migration notice:", e)
+
+
 def _init_engine():
     db_url = settings.database_url
     if db_url.startswith("postgres://"):
@@ -48,11 +67,13 @@ def _init_engine():
 
     if _is_sqlite:
         print(f"Using SQLite database: {db_url}")
-        return create_engine(
+        eng = create_engine(
             db_url,
             connect_args={"check_same_thread": False},
             echo=False,
         )
+        _migrate_sqlite_schema(eng)
+        return eng
 
     # For PostgreSQL / Supabase, attempt connection test with 2s timeout
     try:
@@ -70,11 +91,13 @@ def _init_engine():
     except Exception as exc:
         print(f"PostgreSQL connection failed ({exc}). Falling back to SQLite database...")
         fallback_url = _setup_tmp_sqlite() if os.getenv("VERCEL") else "sqlite:///./student_management.db"
-        return create_engine(
+        eng = create_engine(
             fallback_url,
             connect_args={"check_same_thread": False},
             echo=False,
         )
+        _migrate_sqlite_schema(eng)
+        return eng
 
 
 engine = _init_engine()
@@ -107,6 +130,7 @@ def create_tables():
         print("Mapper configuration notice:", map_err)
     try:
         Base.metadata.create_all(bind=engine)
+        _migrate_sqlite_schema(engine)
         print("Database tables created.")
         if not os.getenv("VERCEL"):
             from app.seed import seed_database
