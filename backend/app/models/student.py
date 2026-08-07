@@ -54,7 +54,7 @@ class StudentProfile(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user = relationship("User", foreign_keys=[user_id], back_populates="student_profile")
+    user = relationship("User", foreign_keys=[user_id])
 
     @property
     def academic_history(self):

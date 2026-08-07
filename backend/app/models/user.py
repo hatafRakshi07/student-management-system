@@ -29,8 +29,5 @@ class User(Base):
     reset_token = Column(String(255), nullable=True)
     reset_token_expiry = Column(DateTime, nullable=True)
 
-    # Relationships
-    student_profile = relationship("StudentProfile", back_populates="user", uselist=False)
-    teacher_profile = relationship("TeacherProfile", back_populates="user", uselist=False)
-    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
-    audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
+    student_profile = relationship("StudentProfile", foreign_keys="StudentProfile.user_id", uselist=False)
+    teacher_profile = relationship("TeacherProfile", foreign_keys="TeacherProfile.user_id", uselist=False)
