@@ -48,51 +48,33 @@ def _init_engine():
 
     if _is_sqlite:
         print(f"Using SQLite database: {db_url}")
-        eng = create_engine(
+        return create_engine(
             db_url,
             connect_args={"check_same_thread": False},
-            echo=settings.debug,
+            echo=False,
         )
-        try:
-            import app.models  # noqa: F401
-            Base.metadata.create_all(bind=eng)
-            from app.seed import seed_database
-            seed_database()
-        except Exception:
-            pass
-        return eng
 
-    # For PostgreSQL / Supabase, attempt connection test with 3s timeout
+    # For PostgreSQL / Supabase, attempt connection test with 2s timeout
     try:
         test_eng = create_engine(
             db_url,
             pool_pre_ping=True,
             pool_recycle=300,
-            connect_args={"connect_timeout": 3},
-            echo=settings.debug,
+            connect_args={"connect_timeout": 2},
+            echo=False,
         )
         with test_eng.connect() as conn:
             conn.execute(text("SELECT 1"))
-        import app.models  # noqa: F401
-        Base.metadata.create_all(bind=test_eng)
         print("Connected to PostgreSQL database cleanly")
         return test_eng
     except Exception as exc:
         print(f"PostgreSQL connection failed ({exc}). Falling back to SQLite database...")
         fallback_url = _setup_tmp_sqlite() if os.getenv("VERCEL") else "sqlite:///./student_management.db"
-        eng = create_engine(
+        return create_engine(
             fallback_url,
             connect_args={"check_same_thread": False},
-            echo=settings.debug,
+            echo=False,
         )
-        try:
-            import app.models  # noqa: F401
-            Base.metadata.create_all(bind=eng)
-            from app.seed import seed_database
-            seed_database()
-        except Exception as seed_err:
-            print("Fallback DB seed notice:", seed_err)
-        return eng
 
 
 engine = _init_engine()
@@ -126,7 +108,8 @@ def create_tables():
     try:
         Base.metadata.create_all(bind=engine)
         print("Database tables created.")
-        from app.seed import seed_database
-        seed_database()
+        if not os.getenv("VERCEL"):
+            from app.seed import seed_database
+            seed_database()
     except Exception as err:
         print("Auto-seed notice:", err)
