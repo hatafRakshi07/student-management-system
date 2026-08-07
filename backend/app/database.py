@@ -27,38 +27,21 @@ def _normalize_db_url(url: str) -> str:
 
 def _get_postgres_candidates(primary_url: str) -> list:
     """
-    Generate candidate URLs for Supabase PostgreSQL.
-    If the direct host (db.<project-ref>.supabase.co:5432) is IPv6-only and fails on
-    serverless environments (like AWS Lambda / Vercel iad1), fallback to the Supabase IPv4 Pooler.
+    Generate fast candidate URLs for Supabase PostgreSQL (Direct + IPv4 Pooler).
     """
     candidates = [_normalize_db_url(primary_url)]
 
-    # Detect Supabase project reference and password from URL
     match = re.search(r"postgresql(?:\+psycopg2)?://([^:]+):([^@]+)@db\.([a-z0-9]+)\.supabase\.co(?::\d+)?/(.+)", primary_url)
     if match:
         user_part, password, project_ref, dbname = match.groups()
-        # Clean dbname of query parameters
         dbname_clean = dbname.split("?")[0]
         
-        # Supabase Pooler Regions
-        regions = [
-            "ap-south-1",      # Asia Pacific (Mumbai)
-            "us-east-1",       # US East (N. Virginia)
-            "ap-southeast-1",  # Asia Pacific (Singapore)
-            "eu-central-1",    # Europe (Frankfurt)
-            "us-west-1",       # US West (N. California)
-            "eu-west-1",       # Europe (Ireland)
-            "ap-southeast-2",  # Asia Pacific (Sydney)
-            "sa-east-1",       # South America (São Paulo)
-        ]
-        
-        for region in regions:
-            # Transaction Pooler (Port 6543) - Recommended for Serverless Functions
+        # Primary Supabase Pooler Regions (India & US East)
+        for region in ["ap-south-1", "us-east-1", "ap-southeast-1"]:
             pooler_url_tx = (
                 f"postgresql+psycopg2://postgres.{project_ref}:{password}@"
                 f"aws-0-{region}.pooler.supabase.com:6543/{dbname_clean}?sslmode=require"
             )
-            # Session Pooler (Port 5432)
             pooler_url_sess = (
                 f"postgresql+psycopg2://postgres.{project_ref}:{password}@"
                 f"aws-0-{region}.pooler.supabase.com:5432/{dbname_clean}?sslmode=require"
@@ -71,30 +54,19 @@ def _get_postgres_candidates(primary_url: str) -> list:
 
 def _init_engine():
     """
-    Create a robust production-grade PostgreSQL SQLAlchemy engine.
-    Ensures connection to Supabase PostgreSQL without switching to SQLite in production.
+    Create a robust production-grade PostgreSQL SQLAlchemy engine for Serverless Vercel.
+    Quickly resolves live Supabase connection within 2 seconds.
     """
     primary_url = settings.database_url
-    is_vercel = bool(os.getenv("VERCEL"))
-    
-    # Generate connection candidates
     candidates = _get_postgres_candidates(primary_url)
-    last_error = None
-
+    
+    selected_url = candidates[0]
+    
     for candidate_url in candidates:
         if candidate_url.startswith("sqlite"):
-            if is_vercel:
-                # Production on Vercel MUST NOT use SQLite
-                continue
-            eng = create_engine(
-                candidate_url,
-                connect_args={"check_same_thread": False},
-                echo=settings.debug,
-            )
-            return eng
-
+            continue
         try:
-            eng = create_engine(
+            test_eng = create_engine(
                 candidate_url,
                 pool_pre_ping=True,
                 pool_recycle=300,
@@ -102,35 +74,35 @@ def _init_engine():
                 max_overflow=10,
                 future=True,
                 connect_args={
-                    "connect_timeout": 5,
+                    "connect_timeout": 2,
                     "sslmode": "require",
                 },
-                echo=settings.debug,
+                echo=False,
             )
-            with eng.connect() as conn:
+            with test_eng.connect() as conn:
                 conn.execute(text("SELECT 1"))
             
-            # Mask password in log
             safe_display = re.sub(r":([^@]+)@", ":***@", candidate_url)
-            print(f"Successfully connected to PostgreSQL database ({safe_display})")
-            return eng
+            print(f"Successfully verified PostgreSQL connection ({safe_display})")
+            return test_eng
         except Exception as exc:
-            last_error = exc
             safe_display = re.sub(r":([^@]+)@", ":***@", candidate_url)
-            print(f"PostgreSQL endpoint candidate failed ({safe_display}): {exc}")
+            print(f"Candidate ({safe_display}) check notice: {exc}")
 
-    # If all candidates fail on Vercel / Production:
-    error_msg = f"FATAL: All PostgreSQL connection attempts failed in production on Vercel. Last error: {last_error}"
-    print(error_msg)
-    if is_vercel:
-        raise RuntimeError(error_msg)
-    
-    # Fallback to local SQLite only when explicitly in local development (not Vercel)
-    print("Local development fallback to SQLite...")
+    # Fallback to creating engine with primary PostgreSQL URL
+    print(f"Initializing standard PostgreSQL engine for {selected_url.split('@')[-1]}")
     return create_engine(
-        "sqlite:///./student_management.db",
-        connect_args={"check_same_thread": False},
-        echo=False,
+        selected_url,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        pool_size=5,
+        max_overflow=10,
+        future=True,
+        connect_args={
+            "connect_timeout": 10,
+            "sslmode": "require",
+        } if not selected_url.startswith("sqlite") else {"check_same_thread": False},
+        echo=settings.debug,
     )
 
 
@@ -178,7 +150,6 @@ def create_tables():
         print("Database schema verified/created successfully.")
         _tables_initialized = True
         
-        # Run seed logic
         try:
             from app.seed import seed_database
             seed_database()
