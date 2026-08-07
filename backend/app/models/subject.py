@@ -16,5 +16,3 @@ class Subject(Base):
     credits = Column(Integer, default=3)
 
     teacher = relationship("User", foreign_keys=[teacher_id])
-    assignments = relationship("Assignment", back_populates="subject")
-    timetable_slots = relationship("Timetable", back_populates="subject")

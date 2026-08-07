@@ -46,7 +46,6 @@ class ExamSchedule(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     subject = relationship("Subject")
-    mark_records = relationship("MarkRecord", back_populates="exam", cascade="all, delete-orphan")
 
 
 class MarkRecord(Base):
@@ -78,7 +77,7 @@ class MarkRecord(Base):
     )
 
     student = relationship("User", foreign_keys=[student_id])
-    exam = relationship("ExamSchedule", back_populates="mark_records")
+    exam = relationship("ExamSchedule")
     subject = relationship("Subject")
     marked_by = relationship("User", foreign_keys=[marked_by_id])
 

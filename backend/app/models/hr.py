@@ -55,10 +55,6 @@ class StaffDetail(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", foreign_keys=[user_id])
-    bank_account = relationship("StaffBankDetail", back_populates="staff", uselist=False, cascade="all, delete-orphan")
-    salary_structure = relationship("StaffSalaryStructure", back_populates="staff", uselist=False, cascade="all, delete-orphan")
-    salary_transactions = relationship("SalaryTransaction", back_populates="staff", cascade="all, delete-orphan")
-    leave_balance = relationship("StaffLeaveBalance", back_populates="staff", uselist=False, cascade="all, delete-orphan")
 
 
 class StaffBankDetail(Base):
@@ -77,7 +73,7 @@ class StaffBankDetail(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    staff = relationship("StaffDetail", back_populates="bank_account")
+    staff = relationship("StaffDetail", foreign_keys=[staff_id])
 
 
 class StaffSalaryStructure(Base):
@@ -106,7 +102,7 @@ class StaffSalaryStructure(Base):
     
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    staff = relationship("StaffDetail", back_populates="salary_structure")
+    staff = relationship("StaffDetail", foreign_keys=[staff_id])
 
 
 class SalaryTransaction(Base):
@@ -135,7 +131,7 @@ class SalaryTransaction(Base):
         UniqueConstraint('staff_id', 'month', 'year', name='uq_staff_monthly_salary'),
     )
 
-    staff = relationship("StaffDetail", back_populates="salary_transactions")
+    staff = relationship("StaffDetail", foreign_keys=[staff_id])
     user = relationship("User", foreign_keys=[user_id])
 
 
@@ -157,7 +153,7 @@ class StaffLeaveBalance(Base):
     
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    staff = relationship("StaffDetail", back_populates="leave_balance")
+    staff = relationship("StaffDetail", foreign_keys=[staff_id])
 
 
 class StaffAuditLog(Base):

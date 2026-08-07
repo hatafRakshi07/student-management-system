@@ -100,8 +100,6 @@ class PlacementCompany(Base):
     industry_type = Column(String(100), default="Information Technology")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    drives = relationship("PlacementDrive", back_populates="company", cascade="all, delete-orphan")
-
 
 class PlacementDrive(Base):
     __tablename__ = "placement_drives"
@@ -116,8 +114,7 @@ class PlacementDrive(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    company = relationship("PlacementCompany", back_populates="drives")
-    offers = relationship("PlacementJobOffer", back_populates="drive", cascade="all, delete-orphan")
+    company = relationship("PlacementCompany")
 
 
 class PlacementJobOffer(Base):
@@ -131,7 +128,7 @@ class PlacementJobOffer(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    drive = relationship("PlacementDrive", back_populates="offers")
+    drive = relationship("PlacementDrive")
     student = relationship("StudentProfile", foreign_keys=[student_id])
 
 

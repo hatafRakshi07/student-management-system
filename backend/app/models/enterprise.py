@@ -69,7 +69,6 @@ class LMSQuiz(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     subject = relationship("Subject", foreign_keys=[subject_id])
-    questions = relationship("LMSQuizQuestion", back_populates="quiz", cascade="all, delete-orphan")
 
 
 class LMSQuizQuestion(Base):
@@ -85,7 +84,7 @@ class LMSQuizQuestion(Base):
     correct_option = Column(String(10), nullable=False, default="A")
     marks = Column(Float, default=2.5)
 
-    quiz = relationship("LMSQuiz", back_populates="questions")
+    quiz = relationship("LMSQuiz")
 
 
 class LMSAssignmentSubmission(Base):
@@ -138,8 +137,6 @@ class AdmissionApplication(Base):
     application_fee_paid = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    documents = relationship("AdmissionDocument", back_populates="application", cascade="all, delete-orphan")
-
 
 class AdmissionDocument(Base):
     __tablename__ = "admission_documents"
@@ -150,7 +147,7 @@ class AdmissionDocument(Base):
     file_url = Column(String(500), nullable=False)
     is_verified = Column(Boolean, default=True)
 
-    application = relationship("AdmissionApplication", back_populates="documents")
+    application = relationship("AdmissionApplication")
 
 
 class AdmissionMeritList(Base):
@@ -187,8 +184,6 @@ class JournalEntry(Base):
     total_amount = Column(Float, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    line_items = relationship("JournalLineItem", back_populates="journal_entry", cascade="all, delete-orphan")
-
 
 class JournalLineItem(Base):
     __tablename__ = "journal_line_items"
@@ -199,7 +194,7 @@ class JournalLineItem(Base):
     debit_amount = Column(Float, default=0.0)
     credit_amount = Column(Float, default=0.0)
 
-    journal_entry = relationship("JournalEntry", back_populates="line_items")
+    journal_entry = relationship("JournalEntry")
     ledger = relationship("LedgerAccount")
 
 

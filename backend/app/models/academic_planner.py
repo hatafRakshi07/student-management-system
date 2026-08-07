@@ -56,8 +56,6 @@ class ClassroomRecord(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    slots = relationship("TimetableSlotRecord", back_populates="room")
-
 
 class FacultySubjectAllocation(Base):
     __tablename__ = "faculty_subject_allocations"
@@ -98,7 +96,7 @@ class TimetableSlotRecord(Base):
 
     subject = relationship("Subject", foreign_keys=[subject_id])
     faculty = relationship("User", foreign_keys=[faculty_user_id])
-    room = relationship("ClassroomRecord", back_populates="slots")
+    room = relationship("ClassroomRecord", foreign_keys=[room_id])
 
 
 class AcademicCalendarEvent(Base):

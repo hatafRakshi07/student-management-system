@@ -27,9 +27,6 @@ class Tenant(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    settings = relationship("TenantSetting", back_populates="tenant", uselist=False)
-    subscriptions = relationship("TenantSubscription", back_populates="tenant")
-
 
 class TenantSetting(Base):
     __tablename__ = "tenant_settings"
@@ -43,7 +40,7 @@ class TenantSetting(Base):
     payment_gateway_key = Column(String(255), nullable=True)
     max_students_limit = Column(Integer, default=50000)
 
-    tenant = relationship("Tenant", back_populates="settings")
+    tenant = relationship("Tenant", foreign_keys=[tenant_id])
 
 
 class TenantSubscription(Base):
@@ -58,7 +55,7 @@ class TenantSubscription(Base):
     start_date = Column(Date, default=date.today)
     expiry_date = Column(Date, default=lambda: date.today().replace(year=date.today().year + 1))
 
-    tenant = relationship("Tenant", back_populates="subscriptions")
+    tenant = relationship("Tenant", foreign_keys=[tenant_id])
 
 
 # --- PHASE 39: PUBLIC API PLATFORM & WEBHOOK MODELS ---

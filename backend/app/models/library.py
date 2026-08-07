@@ -57,8 +57,6 @@ class LibraryBookRecord(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    issues = relationship("LibraryIssueTransaction", back_populates="book", cascade="all, delete-orphan")
-
 
 class LibraryMemberRecord(Base):
     __tablename__ = "library_member_records"
@@ -76,7 +74,6 @@ class LibraryMemberRecord(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", foreign_keys=[user_id])
-    issues = relationship("LibraryIssueTransaction", back_populates="member", cascade="all, delete-orphan")
 
 
 class LibraryIssueTransaction(Base):
@@ -97,9 +94,8 @@ class LibraryIssueTransaction(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    book = relationship("LibraryBookRecord", back_populates="issues")
-    member = relationship("LibraryMemberRecord", back_populates="issues")
-    fines = relationship("LibraryFineRecord", back_populates="transaction", cascade="all, delete-orphan")
+    book = relationship("LibraryBookRecord", foreign_keys=[book_id])
+    member = relationship("LibraryMemberRecord", foreign_keys=[member_id])
 
 
 class LibraryBookReservation(Base):
@@ -128,7 +124,7 @@ class LibraryFineRecord(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    transaction = relationship("LibraryIssueTransaction", back_populates="fines")
+    transaction = relationship("LibraryIssueTransaction", foreign_keys=[transaction_id])
 
 
 class LibraryAuditLog(Base):

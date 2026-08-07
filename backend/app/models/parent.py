@@ -40,8 +40,6 @@ class ParentProfile(Base):
     last_login = Column(DateTime, nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])
-    student_mappings = relationship("ParentStudentMapping", back_populates="parent", cascade="all, delete-orphan")
-    ptm_requests = relationship("PTMRequest", back_populates="parent", cascade="all, delete-orphan")
 
 
 class ParentStudentMapping(Base):
@@ -59,7 +57,7 @@ class ParentStudentMapping(Base):
         UniqueConstraint('parent_id', 'student_id', name='uq_parent_student'),
     )
 
-    parent = relationship("ParentProfile", back_populates="student_mappings")
+    parent = relationship("ParentProfile", foreign_keys=[parent_id])
     student = relationship("StudentProfile", foreign_keys=[student_id])
 
 
@@ -80,7 +78,7 @@ class PTMRequest(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    parent = relationship("ParentProfile", back_populates="ptm_requests")
+    parent = relationship("ParentProfile", foreign_keys=[parent_id])
     student = relationship("StudentProfile", foreign_keys=[student_id])
     teacher = relationship("User", foreign_keys=[teacher_id])
 
