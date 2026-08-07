@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, foreign
 from datetime import datetime
 from app.database import Base
 
@@ -57,20 +57,17 @@ class StudentProfile(Base):
     user = relationship("User", back_populates="student_profile")
     academic_history = relationship(
         "StudentAcademicHistory",
-        primaryjoin="StudentProfile.user_id == StudentAcademicHistory.student_id",
-        foreign_keys="StudentAcademicHistory.student_id",
+        primaryjoin="StudentProfile.user_id == foreign(StudentAcademicHistory.student_id)",
         viewonly=True
     )
     promotions = relationship(
         "StudentPromotion",
-        primaryjoin="StudentProfile.user_id == StudentPromotion.student_id",
-        foreign_keys="StudentPromotion.student_id",
+        primaryjoin="StudentProfile.user_id == foreign(StudentPromotion.student_id)",
         viewonly=True
     )
     documents = relationship(
         "StudentDocument",
-        primaryjoin="StudentProfile.user_id == StudentDocument.student_id",
-        foreign_keys="StudentDocument.student_id",
+        primaryjoin="StudentProfile.user_id == foreign(StudentDocument.student_id)",
         viewonly=True
     )
 
@@ -91,7 +88,7 @@ class StudentAcademicHistory(Base):
     status = Column(String(50), default="ACTIVE")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    student = relationship("User", foreign_keys=[student_id], backref="academic_history")
+    student = relationship("User", foreign_keys=[student_id], backref="user_academic_history")
 
 
 class StudentPromotion(Base):
@@ -106,7 +103,7 @@ class StudentPromotion(Base):
     promotion_date = Column(Date, default=datetime.utcnow)
     remarks = Column(String(255), nullable=True)
 
-    student = relationship("User", foreign_keys=[student_id], backref="promotions")
+    student = relationship("User", foreign_keys=[student_id], backref="user_promotions")
 
 
 class StudentDocument(Base):
@@ -119,7 +116,7 @@ class StudentDocument(Base):
     file_path = Column(String(500), nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
 
-    student = relationship("User", foreign_keys=[student_id], backref="documents")
+    student = relationship("User", foreign_keys=[student_id], backref="user_documents")
 
 
 class ClassMaster(Base):
