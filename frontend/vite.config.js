@@ -24,6 +24,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // Cache all static assets
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // Network-first for API; cache-first for assets
