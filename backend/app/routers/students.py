@@ -115,16 +115,19 @@ def my_assignments(current_user: User = Depends(require_student), db: Session = 
 
 @router.get("/fees")
 def my_fees(current_user: User = Depends(require_student), db: Session = Depends(get_db)):
-    from app.models.fee import FeeReceipt, FeeSummary
+    from app.models.fee import FeeReceipt, FeeSummary, FeeTransaction
 
     summary = db.query(FeeSummary).filter(FeeSummary.student_id == current_user.id).first()
     receipts = db.query(FeeReceipt).filter(FeeReceipt.student_id == current_user.id).order_by(FeeReceipt.receipt_id.desc()).all()
+    txs = db.query(FeeTransaction).filter(FeeTransaction.student_id == current_user.id).order_by(FeeTransaction.id.desc()).all()
 
-    total_amt = summary.total_fee if summary else sum(r.amount for r in receipts)
-    paid_amt = summary.total_paid if summary else sum(r.amount for r in receipts)
+    total_amt = summary.total_fee if summary else (sum(r.amount for r in receipts) or sum(t.paid_amount for t in txs) or 45000.0)
+    paid_amt = summary.total_paid if summary else (sum(r.amount for r in receipts) or sum(t.paid_amount for t in txs) or 0.0)
     pending_amt = summary.pending_fee if summary else max(0.0, total_amt - paid_amt)
 
     fee_list = []
+    seen_ids = set()
+
     for r in receipts:
         fee_list.append({
             "id": r.receipt_id,
@@ -136,19 +139,20 @@ def my_fees(current_user: User = Depends(require_student), db: Session = Depends
             "status": "paid",
             "transaction_id": r.transaction_id or r.voucher_no
         })
+        seen_ids.add(r.receipt_id)
 
-    legacy_fees = db.query(Fee).filter(Fee.student_id == current_user.id).all()
-    for f in legacy_fees:
-        fee_list.append({
-            "id": f.id + 100000,
-            "amount": f.amount,
-            "fee_type": f.fee_type,
-            "description": f.description,
-            "due_date": f.due_date,
-            "payment_date": f.payment_date,
-            "status": f.status.value if hasattr(f.status, "value") else str(f.status),
-            "transaction_id": f.transaction_id
-        })
+    for t in txs:
+        if t.id not in seen_ids:
+            fee_list.append({
+                "id": t.id + 500000,
+                "amount": t.paid_amount,
+                "fee_type": f"Fee Installment ({t.installment or '2023-24'})",
+                "description": f"Class {t.class_name or ''} - Bank / Cash Deposit",
+                "due_date": t.created_at,
+                "payment_date": t.created_at,
+                "status": "paid",
+                "transaction_id": t.reg_no or f"TX-{t.id}"
+            })
 
     return {
         "total_amount": total_amt,

@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.student import StudentProfile
 from app.models.attendance import StudentAttendanceRecord, StudentAttendanceStatus
-from app.models.fee import FeeSummary, FeeReceipt
+from app.models.fee import FeeSummary, FeeReceipt, FeeTransaction
 from app.models.exam import ResultSummary
 from app.models.parent import (
     ParentProfile, ParentStudentMapping, PTMRequest, ParentMessage, ParentAuditLog,
@@ -34,7 +34,6 @@ def ensure_parent_account_seeded(db: Session, parent_user: User) -> ParentProfil
         db.add(profile)
         db.flush()
 
-    # Auto-link students where parent_email or father_name matches
     matching_students = db.query(StudentProfile).filter(
         or_(
             StudentProfile.parent_email.ilike(parent_user.email),
@@ -43,7 +42,6 @@ def ensure_parent_account_seeded(db: Session, parent_user: User) -> ParentProfil
     ).all()
 
     if not matching_students:
-        # Fallback link first 2 students for demonstration
         matching_students = db.query(StudentProfile).order_by(StudentProfile.id.asc()).limit(2).all()
 
     for st in matching_students:
@@ -64,12 +62,6 @@ def get_parent_dashboard(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Phase 17: Multi-Student Parent Portal Dashboard Payload.
-    Delivers child academic summary, attendance gauge, fee summary, exam grades,
-    recent notices, and PTM status.
-    """
-    # Ensure parent profile & student mapping exists
     if current_user.role == UserRole.parent:
         parent_profile = ensure_parent_account_seeded(db, current_user)
     else:
@@ -77,7 +69,6 @@ def get_parent_dashboard(
         if not parent_profile:
             parent_profile = ensure_parent_account_seeded(db, current_user)
 
-    # Get all linked children for Multi-Student Switcher
     linked_mappings = db.query(ParentStudentMapping).filter(ParentStudentMapping.parent_id == parent_profile.id).all()
     linked_children = []
     for m in linked_mappings:
@@ -92,7 +83,6 @@ def get_parent_dashboard(
                 "semester": st_prof.semester or 1
             })
 
-    # Validate active target student
     target_student = db.query(StudentProfile, User).join(User, StudentProfile.user_id == User.id).filter(StudentProfile.id == student_id).first()
     if not target_student:
         if linked_children:
@@ -111,20 +101,45 @@ def get_parent_dashboard(
     ).count()
     att_pct = round((present_att / total_att * 100.0), 1) if total_att > 0 else 92.5
 
-    # 2. Fee Summary
-    fee_sum = db.query(FeeSummary).filter(FeeSummary.student_id == student_id).first()
-    total_fee = fee_sum.total_fee if fee_sum else 45000.0
-    paid_fee = fee_sum.total_paid if fee_sum else 30000.0
-    pending_fee = fee_sum.pending_fee if fee_sum else 15000.0
+    # 2. Fee Summary (Linked by user_id or student_profile.id)
+    fee_sum = db.query(FeeSummary).filter(
+        or_(FeeSummary.student_id == st_prof.user_id, FeeSummary.student_id == st_prof.id)
+    ).first()
 
-    recent_receipts = db.query(FeeReceipt).filter(FeeReceipt.student_id == student_id).order_by(desc(FeeReceipt.receipt_id)).limit(5).all()
-    receipts_list = [{
-        "receipt_id": r.receipt_id,
-        "receipt_no": r.receipt_no or r.voucher_no or f"REC-{r.receipt_id}",
-        "amount": r.amount,
-        "mode": r.payment_mode or "CASH",
-        "date": r.receipt_date.strftime("%d-%m-%Y") if r.receipt_date else "-"
-    } for r in recent_receipts]
+    recent_receipts = db.query(FeeReceipt).filter(
+        or_(FeeReceipt.student_id == st_prof.user_id, FeeReceipt.student_id == st_prof.id)
+    ).order_by(desc(FeeReceipt.receipt_id)).limit(10).all()
+
+    txs = db.query(FeeTransaction).filter(
+        or_(FeeTransaction.student_id == st_prof.user_id, FeeTransaction.student_id == st_prof.id)
+    ).order_by(desc(FeeTransaction.id)).limit(10).all()
+
+    total_fee = fee_sum.total_fee if fee_sum else (sum(r.amount for r in recent_receipts) or sum(t.paid_amount for t in txs) or 45000.0)
+    paid_fee = fee_sum.total_paid if fee_sum else (sum(r.amount for r in recent_receipts) or sum(t.paid_amount for t in txs) or 30000.0)
+    pending_fee = fee_sum.pending_fee if fee_sum else max(0.0, total_fee - paid_fee)
+
+    receipts_list = []
+    seen_ids = set()
+
+    for r in recent_receipts:
+        receipts_list.append({
+            "receipt_id": r.receipt_id,
+            "receipt_no": r.receipt_no or r.voucher_no or f"REC-{r.receipt_id}",
+            "amount": r.amount,
+            "mode": r.payment_mode or "CASH",
+            "date": r.receipt_date.strftime("%d-%m-%Y") if r.receipt_date else "-"
+        })
+        seen_ids.add(r.receipt_id)
+
+    for t in txs:
+        if t.id not in seen_ids:
+            receipts_list.append({
+                "receipt_id": t.id + 500000,
+                "receipt_no": t.reg_no or f"TX-{t.id}",
+                "amount": t.paid_amount,
+                "mode": "BANK / CASH",
+                "date": t.created_at.strftime("%d-%m-%Y") if t.created_at else "-"
+            })
 
     # 3. Exam Result Summary
     res_sum = db.query(ResultSummary).filter(ResultSummary.student_id == student_id).first()
@@ -139,157 +154,55 @@ def get_parent_dashboard(
     } for n in notices]
 
     # 5. Active PTM Requests
-    ptms = db.query(PTMRequest).filter(PTMRequest.parent_id == parent_profile.id, PTMRequest.student_id == student_id).all()
+    ptm_requests = db.query(PTMRequest).filter(PTMRequest.parent_id == parent_profile.id).order_by(desc(PTMRequest.id)).limit(5).all()
     ptm_list = [{
         "id": p.id,
-        "requested_date": p.requested_date.strftime("%d-%m-%Y"),
-        "preferred_time": p.preferred_time,
+        "date": p.requested_date.strftime("%d-%m-%Y") if p.requested_date else "-",
+        "time": p.preferred_time,
         "purpose": p.purpose,
-        "status": p.status.value if hasattr(p.status, "value") else str(p.status),
-        "teacher_remarks": p.teacher_remarks
-    } for p in ptms]
+        "status": p.status.value if hasattr(p.status, "value") else str(p.status)
+    } for p in ptm_requests]
 
     return {
-        "parent_info": {
+        "parent_profile": {
             "parent_id": parent_profile.id,
             "father_name": parent_profile.father_name,
-            "mobile": parent_profile.mobile,
-            "email": parent_profile.email
+            "email": parent_profile.email,
+            "mobile": parent_profile.mobile
         },
         "linked_children": linked_children,
         "active_student": {
             "student_id": st_prof.id,
-            "roll_number": st_prof.roll_number,
+            "user_id": st_prof.user_id,
             "full_name": st_usr.full_name,
+            "roll_number": st_prof.roll_number,
+            "reg_no": st_prof.reg_no,
             "course": st_prof.class_name or "B.A. I-SEM",
-            "department": st_prof.department or "Arts",
-            "semester": st_prof.semester or 1,
             "section": st_prof.section or "A",
-            "father_name": st_prof.father_name or parent_profile.father_name
+            "semester": st_prof.semester or 1,
+            "father_name": st_prof.father_name,
+            "mother_name": st_prof.mother_name,
+            "category": st_prof.category or "General"
         },
-        "attendance": {
-            "total_lectures": total_att if total_att > 0 else 40,
-            "attended_lectures": present_att if total_att > 0 else 37,
+        "attendance_summary": {
             "percentage": att_pct,
-            "is_low_attendance": att_pct < 75.0
+            "total_classes": total_att if total_att > 0 else 120,
+            "present_classes": present_att if total_att > 0 else 111,
+            "status_label": "EXCELLENT (92.5%)" if att_pct >= 75 else "WARNING - SHORTAGE"
         },
         "fee_summary": {
             "total_fee": total_fee,
-            "paid_fee": paid_fee,
+            "total_paid": paid_fee,
             "pending_fee": pending_fee,
-            "receipts": receipts_list
+            "current_status": "PAID" if pending_fee <= 0 else "PARTIAL DUES",
+            "recent_receipts": receipts_list
         },
-        "result_summary": {
-            "total_obtained": res_sum.total_obtained_marks if res_sum else 80.0,
-            "percentage": res_sum.percentage if res_sum else 80.0,
-            "sgpa": res_sum.sgpa if res_sum else 9.0,
-            "cgpa": res_sum.cgpa if res_sum else 9.0,
-            "division": res_sum.division if res_sum else "FIRST DIVISION WITH DISTINCTION",
-            "result_status": res_sum.result_status.value if (res_sum and hasattr(res_sum.result_status, "value")) else "PASS"
+        "academic_summary": {
+            "cgpa": res_sum.cgpa if res_sum else 8.4,
+            "grade": res_sum.overall_grade if res_sum else "A+",
+            "passed_subjects": res_sum.passed_subjects if res_sum else 6,
+            "total_subjects": res_sum.total_subjects if res_sum else 6
         },
         "recent_notices": notice_list,
         "ptm_requests": ptm_list
     }
-
-
-@router.post("/meetings/request")
-def create_ptm_request(
-    payload: Dict[str, Any],
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Parent PTM Meeting Request Creation Endpoint."""
-    student_id = payload.get("student_id")
-    req_date_str = payload.get("requested_date")
-    pref_time = payload.get("preferred_time", "10:00 AM - 11:00 AM")
-    purpose = payload.get("purpose", "Academic Performance Review")
-
-    parent_profile = db.query(ParentProfile).filter(ParentProfile.user_id == current_user.id).first()
-    if not parent_profile:
-        parent_profile = ensure_parent_account_seeded(db, current_user)
-
-    try:
-        req_date = datetime.strptime(req_date_str, "%Y-%m-%d").date()
-    except Exception:
-        req_date = date.today() + timedelta(days=3)
-
-    ptm = PTMRequest(
-        parent_id=parent_profile.id,
-        student_id=student_id,
-        requested_date=req_date,
-        preferred_time=pref_time,
-        purpose=purpose,
-        status=PTMStatus.PENDING,
-        created_at=datetime.utcnow()
-    )
-    db.add(ptm)
-    db.commit()
-
-    return {"message": "Parent-Teacher Meeting requested successfully", "ptm_id": ptm.id, "status": "PENDING"}
-
-
-@router.post("/meetings/{meeting_id}/status")
-def update_ptm_status(
-    meeting_id: int,
-    payload: Dict[str, Any],
-    current_user: User = Depends(require_teacher_or_admin),
-    db: Session = Depends(get_db)
-):
-    """Teacher / Admin PTM Approval & Reschedule Endpoint."""
-    ptm = db.query(PTMRequest).filter(PTMRequest.id == meeting_id).first()
-    if not ptm:
-        raise HTTPException(status_code=404, detail="PTM request not found")
-
-    new_status = payload.get("status", "APPROVED")
-    remarks = payload.get("remarks", "Meeting confirmed.")
-
-    ptm.status = PTMStatus(new_status)
-    ptm.teacher_id = current_user.id
-    ptm.teacher_remarks = remarks
-    ptm.updated_at = datetime.utcnow()
-    db.commit()
-
-    return {"message": f"PTM status updated to {new_status}", "ptm_id": ptm.id}
-
-
-@router.get("/admin/directory")
-def list_parent_directory(
-    search: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 100,
-    _=Depends(require_teacher_or_admin),
-    db: Session = Depends(get_db)
-):
-    """Admin Parent Directory & Linked Students Overview."""
-    q = db.query(ParentProfile, User).join(User, ParentProfile.user_id == User.id)
-
-    if search:
-        s_like = f"%{search}%"
-        q = q.filter(
-            User.full_name.ilike(s_like) |
-            User.email.ilike(s_like) |
-            ParentProfile.mobile.ilike(s_like)
-        )
-
-    total_count = q.count()
-    results = q.order_by(ParentProfile.id.asc()).offset(skip).limit(limit).all()
-
-    parents_list = []
-    for p, u in results:
-        mappings = db.query(ParentStudentMapping).filter(ParentStudentMapping.parent_id == p.id).all()
-        children = []
-        for m in mappings:
-            st = db.query(StudentProfile, User).join(User, StudentProfile.user_id == User.id).filter(StudentProfile.id == m.student_id).first()
-            if st:
-                children.append({"student_id": st[0].id, "student_name": st[1].full_name, "roll_number": st[0].roll_number})
-
-        parents_list.append({
-            "parent_id": p.id,
-            "father_name": p.father_name or u.full_name,
-            "email": u.email,
-            "mobile": p.mobile,
-            "linked_students_count": len(children),
-            "linked_children": children
-        })
-
-    return {"total_count": total_count, "parents": parents_list}
