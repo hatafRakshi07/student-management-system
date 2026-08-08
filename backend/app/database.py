@@ -70,11 +70,25 @@ def _init_engine():
     db_path = "/tmp/student_management_prod.db" if is_vercel else "./student_management.db"
     sqlite_url = f"sqlite:///{db_path}"
     
-    return create_engine(
+    sqlite_eng = create_engine(
         sqlite_url,
-        connect_args={"check_same_thread": False},
+        connect_args={"check_same_thread": False, "timeout": 30.0},
         echo=False,
     )
+
+    from sqlalchemy import event
+    @event.listens_for(sqlite_eng, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        try:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=30000")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.close()
+        except Exception:
+            pass
+
+    return sqlite_eng
 
 
 engine = _init_engine()

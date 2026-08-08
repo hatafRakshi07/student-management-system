@@ -3,15 +3,20 @@ import toast from 'react-hot-toast'
 
 const getBaseURL = () => {
   const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+
   if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
     const trimmed = envUrl.trim()
-    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+    }
+    const cleanPath = trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+    return `${origin}${cleanPath.startsWith('/') ? '' : '/'}${cleanPath}`
   }
-  // Default to relative /api when hosted fullstack, or Render backend fallback
   if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
     return 'https://student-management-system-9yuf.onrender.com/api'
   }
-  return '/api'
+  return typeof window !== 'undefined' ? `${origin}/api` : '/api'
 }
 
 const apiBaseURL = getBaseURL()
@@ -34,10 +39,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isLoginReq = error.config?.url?.includes('/auth/login')
+    if (error.response?.status === 401 && !isLoginReq) {
       localStorage.removeItem('access_token')
       localStorage.removeItem('user')
-      window.location.href = '/login'
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
     } else if (error.response?.status === 403) {
       toast.error('Access denied')
     } else if (error.response?.status === 500) {

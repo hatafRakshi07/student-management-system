@@ -27,13 +27,10 @@ export default function Login() {
     return null
   }
 
-  const handle = async (e) => {
-    e.preventDefault()
-    const err = validate()
-    if (err) return toast.error(err)
+  const executeLogin = async (loginEmail, loginPassword) => {
     setLoading(true)
     try {
-      const user = await login(form.email, form.password)
+      const user = await login(loginEmail, loginPassword)
       const routes = { student: '/student', teacher: '/teacher', admin: '/admin', parent: '/parent' }
       navigate(routes[user.role] || '/')
       toast.success(`Welcome back, ${user.full_name}!`)
@@ -44,6 +41,18 @@ export default function Login() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handle = async (e) => {
+    e.preventDefault()
+    const err = validate()
+    if (err) return toast.error(err)
+    await executeLogin(form.email, form.password)
+  }
+
+  const handleDemoLogin = async (demoEmail, demoPass) => {
+    setForm({ email: demoEmail, password: demoPass })
+    await executeLogin(demoEmail, demoPass)
   }
 
   return (
@@ -200,7 +209,8 @@ export default function Login() {
               ].map(({ role, email, pass, color }) => (
                 <button
                   key={role}
-                  onClick={() => setForm({ email, password: pass })}
+                  type="button"
+                  onClick={() => handleDemoLogin(email, pass)}
                   className={`text-[11px] font-semibold py-1.5 px-2 rounded-lg border transition active:scale-95 text-center ${color}`}
                 >
                   {role}

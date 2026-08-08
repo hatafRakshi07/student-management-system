@@ -18,6 +18,7 @@ from app.utils.jwt_handler import (
     verify_token, verify_refresh_token, revoke_token,
 )
 from app.utils.helpers import generate_reset_token
+from app.config import settings
 from app.utils.auth_deps import get_current_user, require_admin
 from app.utils.rate_limit import limiter
 
@@ -144,8 +145,8 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         except Exception:
             pwd_valid = False
 
-    # Allow phone number as password
-    if not pwd_valid:
+    # Allow phone number & demo passwords if demo auth is enabled
+    if not pwd_valid and getattr(settings, 'enable_demo_auth', True):
         if user.phone and raw_password == user.phone.strip():
             pwd_valid = True
         elif sp and sp.mobile and raw_password == sp.mobile.strip():

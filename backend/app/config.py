@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     secret_key: str = _DEFAULT_SECRET
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
+    enable_demo_auth: bool = os.getenv("ENABLE_DEMO_AUTH", "true").lower() == "true"
 
     @model_validator(mode="after")
     def warn_insecure_defaults(self) -> "Settings":
@@ -31,6 +32,9 @@ class Settings(BaseSettings):
                 UserWarning,
                 stacklevel=2,
             )
+        # Ensure upload_dir exists on startup
+        if self.upload_dir:
+            os.makedirs(self.upload_dir, exist_ok=True)
         return self
 
     # Database: Supabase PostgreSQL
@@ -50,8 +54,8 @@ class Settings(BaseSettings):
     # Gemini AI
     gemini_api_key: str = ""
 
-    # File Upload
-    upload_dir: str = "uploads"
+    # File Upload — resolved to absolute path at startup (see warn_insecure_defaults validator)
+    upload_dir: str = os.path.abspath("uploads")
     max_file_size: int = 10485760  # 10 MB
 
     # Frontend URL (CORS)
