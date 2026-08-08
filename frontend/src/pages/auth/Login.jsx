@@ -38,8 +38,8 @@ export default function Login() {
       console.error('Login error:', err)
       const rawDetail = err.response?.data?.detail || err.response?.data?.error || err.message
       let msg = typeof rawDetail === 'string' ? rawDetail : (rawDetail?.message || rawDetail?.error || (Array.isArray(rawDetail) ? rawDetail.map(d => d.msg || d.message).join(', ') : 'Login failed'))
-      if (msg.includes('Invalid URL')) {
-        msg = 'Connection error. Please try clicking login again or refresh the page.'
+      if (msg.includes('Invalid URL') || msg.includes('Failed to construct') || msg.includes('Network Error')) {
+        msg = 'Unable to connect to backend server. Please check server status or try again.'
       }
       toast.error(msg)
     } finally {

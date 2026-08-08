@@ -2,31 +2,61 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 
 const getBaseURL = () => {
-  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL
+  const rawEnv = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''
 
-  if (envUrl && typeof envUrl === 'string' && envUrl.trim() && envUrl !== 'undefined' && envUrl !== 'null') {
-    const trimmed = envUrl.trim()
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed.endsWith('/api') ? trimmed : `${trimmed.replace(/\/+$/, '')}/api`
+  if (typeof rawEnv === 'string' && rawEnv.trim() && rawEnv !== 'undefined' && rawEnv !== 'null') {
+    let envUrl = rawEnv.trim()
+
+    // 1. Relative path like "/api" or "/api/"
+    if (envUrl.startsWith('/')) {
+      const cleanPath = envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/+$/, '')}/api`
+      if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
+        return `${window.location.origin.replace(/\/+$/, '')}${cleanPath}`
+      }
+      return `http://localhost:8000${cleanPath}`
+    }
+
+    // 2. Missing protocol like "student-management-system-9yuf.onrender.com/api" or "localhost:8000"
+    if (!envUrl.startsWith('http://') && !envUrl.startsWith('https://')) {
+      envUrl = `https://${envUrl}`
+    }
+
+    // 3. Ensure valid URL construction & format
+    try {
+      const parsed = new URL(envUrl)
+      const origin = parsed.origin
+      let pathname = parsed.pathname.replace(/\/+$/, '')
+      if (!pathname || pathname === '/') {
+        pathname = '/api'
+      } else if (!pathname.endsWith('/api')) {
+        pathname = `${pathname}/api`
+      }
+      return `${origin}${pathname}`
+    } catch {
+      // Fall through to window.location detection if parsing fails
     }
   }
 
+  // Auto-detection based on browser location
   if (typeof window !== 'undefined' && window.location) {
     const { origin, hostname, protocol, port } = window.location
+
     if (hostname && hostname.includes('onrender.com')) {
       return 'https://student-management-system-9yuf.onrender.com/api'
     }
+
     if (origin && origin !== 'null' && (origin.startsWith('http://') || origin.startsWith('https://'))) {
       return `${origin.replace(/\/+$/, '')}/api`
     }
-    if (hostname && hostname !== 'null') {
+
+    if (hostname && hostname.trim() && hostname !== 'null') {
       const p = (protocol && protocol.startsWith('http')) ? protocol : 'http:'
       const pt = port ? `:${port}` : ''
       return `${p}//${hostname}${pt}/api`
     }
   }
 
-  return 'http://localhost:5173/api'
+  return 'http://localhost:8000/api'
 }
 
 const apiBaseURL = getBaseURL()
@@ -36,8 +66,11 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Request interceptor - attach JWT token
+// Request interceptor - attach JWT token & ensure valid absolute baseURL
 api.interceptors.request.use((config) => {
+  if (!config.baseURL || (!config.baseURL.startsWith('http://') && !config.baseURL.startsWith('https://'))) {
+    config.baseURL = getBaseURL()
+  }
   const token = localStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
