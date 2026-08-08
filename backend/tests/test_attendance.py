@@ -1,8 +1,6 @@
 """Tests for attendance endpoints."""
 
-
 def test_mark_attendance(client, admin_token):
-    # First create a student profile
     res_student = client.post("/api/auth/register/student", json={
         "email": "attendance_student@test.com",
         "full_name": "Attendance Student",
@@ -18,18 +16,16 @@ def test_mark_attendance(client, admin_token):
     student_id = res_student.json()["user_id"]
 
     res = client.post(
-        "/api/attendance",
+        "/api/attendance/session/submit",
         json={
-            "student_id": student_id,
-            "subject_id": None,
-            "status": "present",
-            "date": "2026-08-04"
+            "class_name": "CS-3A",
+            "section": "A",
+            "date": "2026-08-04",
+            "records": [{"student_id": student_id, "status": "PRESENT"}]
         },
         headers={"Authorization": f"Bearer {admin_token}"}
     )
-
     assert res.status_code in (200, 201)
-
 
 
 def test_get_student_attendance(client, admin_token):
@@ -47,7 +43,6 @@ def test_get_student_attendance(client, admin_token):
     })
     student_id = res_student.json()["user_id"]
 
-    # Get student attendance
-    res = client.get(f"/api/attendance/student/{student_id}", headers={"Authorization": f"Bearer {admin_token}"})
+    res = client.get(f"/api/attendance/summary/student/{student_id}", headers={"Authorization": f"Bearer {admin_token}"})
     assert res.status_code == 200
-    assert "records" in res.json() or "attendance" in res.json() or isinstance(res.json(), (list, dict))
+    assert "attendance_percentage" in res.json() or "summary" in res.json() or isinstance(res.json(), dict)

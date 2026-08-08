@@ -1,6 +1,5 @@
 """Tests for fee management and payment checkout endpoints."""
 
-
 def test_list_fees(client, admin_token):
     res = client.get("/api/fees", headers={"Authorization": f"Bearer {admin_token}"})
     assert res.status_code == 200
@@ -29,30 +28,21 @@ def test_create_and_checkout_fee(client, admin_token):
     })
     student_id = res_student.json()["user_id"]
 
-    # 2. Create fee
+    # 2. Collect fee
     res_fee = client.post(
-        "/api/fees",
+        "/api/fees/collect",
         json={
             "student_id": student_id,
             "amount": 5000.0,
-            "fee_type": "Tuition Fee",
-            "due_date": "2026-10-01"
+            "payment_mode": "CASH",
+            "remarks": "Tuition Fee Deposit"
         },
         headers={"Authorization": f"Bearer {admin_token}"}
     )
-    assert res_fee.status_code == 201
-    fee_id = res_fee.json()["id"]
+    assert res_fee.status_code in (200, 201)
+    receipt_id = res_fee.json()["receipt_id"]
 
-    # 3. Checkout payment
-    res_checkout = client.post(f"/api/fees/{fee_id}/checkout")
-    assert res_checkout.status_code == 200
-    assert "checkout_session" in res_checkout.json()
-    order_id = res_checkout.json()["checkout_session"]["order_id"]
-
-    # 4. Verify payment
-    res_verify = client.post(
-        f"/api/fees/{fee_id}/verify-payment",
-        json={"order_id": order_id, "payment_id": "PAY_MOCK_123456"}
-    )
-    assert res_verify.status_code == 200
-    assert res_verify.json()["status"] == "paid"
+    # 3. View receipt
+    res_receipt = client.get(f"/api/fees/receipt/{receipt_id}", headers={"Authorization": f"Bearer {admin_token}"})
+    assert res_receipt.status_code == 200
+    assert "receipt_info" in res_receipt.json()
