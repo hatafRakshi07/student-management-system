@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, ClipboardList,
   BarChart3, Bell, DollarSign, Calendar, CalendarDays, FileText, Brain, Settings,
-  UserCheck, BookMarked, ChevronRight, FlaskConical, LogOut, X
+  UserCheck, BookMarked, ChevronRight, FlaskConical, LogOut, X, Home, Package
 } from 'lucide-react'
 
 const navItems = {
@@ -35,9 +35,11 @@ const navItems = {
   ],
   admin: [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: '/admin/students', label: 'Students', icon: GraduationCap },
-    { to: '/admin/teachers', label: 'Teachers', icon: Users },
-    { to: '/admin/fees', label: 'Fee Management', icon: DollarSign },
+    { to: '/admin/students', label: 'Students (755 Active)', icon: GraduationCap },
+    { to: '/admin/teachers', label: 'Teachers & Staff', icon: Users },
+    { to: '/admin/fees', label: 'Fee Management (2527 Recpt)', icon: DollarSign },
+    { to: '/admin/hostel', label: 'Hostel & Mess', icon: Home },
+    { to: '/admin/inventory', label: 'Inventory & Assets', icon: Package },
     { to: '/admin/import', label: 'Data Import Module', icon: FileText },
     { to: '/admin/notices', label: 'Notices', icon: Bell },
     { to: '/admin/timetable', label: 'Timetable', icon: Calendar },

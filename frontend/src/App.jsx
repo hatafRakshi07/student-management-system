@@ -52,6 +52,7 @@ import StudentLMS from './pages/student/StudentLMS'
 import OnlineAdmission from './pages/public/OnlineAdmission'
 import AdminFinanceHub from './pages/admin/AdminFinanceHub'
 import AdminInventoryHub from './pages/admin/AdminInventoryHub'
+import AdminHostelHub from './pages/admin/AdminHostelHub'
 import AdminCertificateHub from './pages/admin/AdminCertificateHub'
 import DocumentVerification from './pages/public/DocumentVerification'
 import AdminPlacementHub from './pages/admin/AdminPlacementHub'
@@ -130,6 +131,7 @@ function AppRoutes() {
       <Route path="/admin/library" element={<ProtectedRoute roles={["admin"]}><AdminLibraryHub /></ProtectedRoute>} />
       <Route path="/admin/finance" element={<ProtectedRoute roles={["admin"]}><AdminFinanceHub /></ProtectedRoute>} />
       <Route path="/admin/inventory" element={<ProtectedRoute roles={["admin"]}><AdminInventoryHub /></ProtectedRoute>} />
+      <Route path="/admin/hostel" element={<ProtectedRoute roles={["admin"]}><AdminHostelHub /></ProtectedRoute>} />
       <Route path="/admin/certificates" element={<ProtectedRoute roles={["admin"]}><AdminCertificateHub /></ProtectedRoute>} />
       <Route path="/admin/placement" element={<ProtectedRoute roles={["admin"]}><AdminPlacementHub /></ProtectedRoute>} />
       <Route path="/admin/research" element={<ProtectedRoute roles={["admin"]}><AdminResearchHub /></ProtectedRoute>} />
