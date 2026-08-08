@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.student import StudentProfile
 from app.models.teacher import TeacherProfile
+from app.models.parent import ParentProfile
 from app.models.audit import AuditLog
 from app.schemas.user import (
     StudentRegister, TeacherRegister, AdminRegister,
@@ -60,6 +61,19 @@ def _user_out(user: User, db: Session) -> dict:
                 })
         except Exception:
             db.rollback()
+    if (user.role == UserRole.parent or role_val == "parent"):
+        try:
+            pp = db.query(ParentProfile).filter(ParentProfile.user_id == user.id).first()
+            if pp:
+                data.update({
+                    "father_name": getattr(pp, 'father_name', None),
+                    "mother_name": getattr(pp, 'mother_name', None),
+                    "guardian_name": getattr(pp, 'guardian_name', None),
+                    "mobile": getattr(pp, 'mobile', None),
+                    "address": getattr(pp, 'address', None),
+                })
+        except Exception:
+            db.rollback()
     return data
 
 
@@ -71,28 +85,24 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
     
     if not raw_login or not raw_password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Please provide your Student Name, Scholar No, Email, and Password")
+                            detail="Please provide your Student/User Name, Roll/Scholar No, Email, and Password")
 
     user = None
     sp = None
+    tp = None
+    pp = None
 
     # 1. Match User table directly by email, username, phone, or exact full_name
     try:
         user = db.query(User).filter(
             (User.email.ilike(raw_login)) |
-            (User.username.ilike(raw_login)) |
             (User.phone == raw_login) |
             (User.full_name.ilike(raw_login))
         ).first()
     except Exception:
         db.rollback()
-        user = db.query(User).filter(
-            (User.email.ilike(raw_login)) |
-            (User.phone == raw_login) |
-            (User.full_name.ilike(raw_login))
-        ).first()
 
-    # 2. If not found in User, search StudentProfile by roll_number, reg_no, admission_no, student_name, mobile
+    # 2. Match StudentProfile by roll_number, reg_no, admission_no, student_name, mobile, father_mobile
     if not user:
         try:
             sp = db.query(StudentProfile).filter(
@@ -118,7 +128,22 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         except Exception:
             db.rollback()
 
-    # 4. Partial / substring match on full_name or student_name if still not found
+    # 4. Match ParentProfile by mobile, alt_mobile, email, father_name, mother_name
+    if not user:
+        try:
+            pp = db.query(ParentProfile).filter(
+                (ParentProfile.mobile == raw_login) |
+                (ParentProfile.alt_mobile == raw_login) |
+                (ParentProfile.email.ilike(raw_login)) |
+                (ParentProfile.father_name.ilike(raw_login)) |
+                (ParentProfile.mother_name.ilike(raw_login))
+            ).first()
+            if pp and pp.user_id:
+                user = db.query(User).filter(User.id == pp.user_id).first()
+        except Exception:
+            db.rollback()
+
+    # 5. Substring search as fallback
     if not user:
         user = db.query(User).filter(User.full_name.ilike(f"%{raw_login}%")).first()
     if not user:
@@ -131,13 +156,17 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="No student or user found matching that Name, Scholar No, or Email")
+                            detail="No user or account found matching that Name, Roll No, Phone, or Email")
 
-    # Load student profile if user was found directly
+    # Load profiles if user was found directly
     if not sp:
         sp = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
+    if not tp:
+        tp = db.query(TeacherProfile).filter(TeacherProfile.user_id == user.id).first()
+    if not pp:
+        pp = db.query(ParentProfile).filter(ParentProfile.user_id == user.id).first()
 
-    # 4. Password validation (Hash, Phone number match, or demo fallback)
+    # 6. Password validation (Hash check, Phone number match, or Demo password fallback)
     pwd_valid = False
     if user.hashed_password:
         try:
@@ -154,6 +183,10 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         elif sp and sp.father_mobile and raw_password == sp.father_mobile.strip():
             pwd_valid = True
         elif sp and sp.mother_mobile and raw_password == sp.mother_mobile.strip():
+            pwd_valid = True
+        elif pp and pp.mobile and raw_password == pp.mobile.strip():
+            pwd_valid = True
+        elif pp and pp.alt_mobile and raw_password == pp.alt_mobile.strip():
             pwd_valid = True
         elif raw_password.lower() in [
             "student@123", "student123", "student", "123456", "password",

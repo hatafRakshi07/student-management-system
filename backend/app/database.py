@@ -62,9 +62,8 @@ def _init_engine():
             print("Successfully connected to PostgreSQL database.")
             return eng
         except Exception as exc:
-            print(f"PostgreSQL connection notice ({exc}). Initializing serverless database...")
-            if not is_vercel:
-                return eng
+            print(f"PostgreSQL connection notice ({exc}). Initializing SQLite fallback database...")
+
 
     # On Vercel or local fallback: initialize clean database in /tmp
     db_path = "/tmp/student_management_prod.db" if is_vercel else "./student_management.db"

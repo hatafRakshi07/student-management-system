@@ -128,6 +128,7 @@ from app.routers import audit, hr, parents, academic_planner, library, enterpris
 app.include_router(audit.router)
 app.include_router(hr.router)
 app.include_router(parents.router)
+app.include_router(parents.router, prefix="/api/parents", tags=["Parents Plural Alias"])
 app.include_router(academic_planner.router)
 app.include_router(library.router)
 app.include_router(enterprise.router)
