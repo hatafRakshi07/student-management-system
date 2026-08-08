@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { notificationAPI } from '../services/api'
+import { notificationAPI, getBaseURL } from '../services/api'
 import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
 
@@ -25,10 +25,18 @@ export function NotificationProvider({ children }) {
 
     let socket = null
     if (user?.id && typeof window !== 'undefined' && window.location) {
-      const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const host = isDev ? `${window.location.hostname}:8000` : (window.location.host || 'localhost:8000')
-      const wsUrl = `${protocol}//${host}/ws/${user.id}`
+      let wsUrl = ''
+      try {
+        const apiBase = getBaseURL()
+        const parsedApi = new URL(apiBase)
+        const wsProto = parsedApi.protocol === 'https:' ? 'wss:' : 'ws:'
+        wsUrl = `${wsProto}//${parsedApi.host}/ws/${user.id}`
+      } catch {
+        const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        const host = isDev ? `${window.location.hostname}:8000` : 'student-management-system-9yuf.onrender.com'
+        wsUrl = `${protocol}//${host}/ws/${user.id}`
+      }
 
       try {
         socket = new WebSocket(wsUrl)

@@ -1,39 +1,43 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-const getBaseURL = () => {
+export const getBaseURL = () => {
   const rawEnv = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''
+  const RENDER_BACKEND_FALLBACK = 'https://student-management-system-9yuf.onrender.com/api'
 
   if (typeof rawEnv === 'string' && rawEnv.trim() && rawEnv !== 'undefined' && rawEnv !== 'null') {
     let envUrl = rawEnv.trim()
 
-    // 1. Relative path like "/api" or "/api/"
+    // 1. Full URL starting with http:// or https://
+    if (envUrl.startsWith('http://') || envUrl.startsWith('https://')) {
+      return envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/+$/, '')}/api`
+    }
+
+    // 2. Relative path like "/api" or "/api/"
     if (envUrl.startsWith('/')) {
       const cleanPath = envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/+$/, '')}/api`
-      if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
-        return `${window.location.origin.replace(/\/+$/, '')}${cleanPath}`
+      if (typeof window !== 'undefined' && window.location) {
+        if (window.location.hostname && window.location.hostname.includes('onrender.com')) {
+          return RENDER_BACKEND_FALLBACK
+        }
+        if (window.location.origin && window.location.origin.startsWith('http')) {
+          return `${window.location.origin.replace(/\/+$/, '')}${cleanPath}`
+        }
       }
       return `http://localhost:8000${cleanPath}`
     }
 
-    // 2. Missing protocol like "student-management-system-9yuf.onrender.com/api" or "localhost:8000"
-    if (!envUrl.startsWith('http://') && !envUrl.startsWith('https://')) {
+    // 3. Domain without protocol (e.g. "student-management-system-9yuf.onrender.com/api")
+    if (envUrl.includes('.')) {
       envUrl = `https://${envUrl}`
-    }
-
-    // 3. Ensure valid URL construction & format
-    try {
-      const parsed = new URL(envUrl)
-      const origin = parsed.origin
-      let pathname = parsed.pathname.replace(/\/+$/, '')
-      if (!pathname || pathname === '/') {
-        pathname = '/api'
-      } else if (!pathname.endsWith('/api')) {
-        pathname = `${pathname}/api`
-      }
-      return `${origin}${pathname}`
-    } catch {
-      // Fall through to window.location detection if parsing fails
+      try {
+        const parsed = new URL(envUrl)
+        const origin = parsed.origin
+        let pathname = parsed.pathname.replace(/\/+$/, '')
+        if (!pathname || pathname === '/') pathname = '/api'
+        else if (!pathname.endsWith('/api')) pathname = `${pathname}/api`
+        return `${origin}${pathname}`
+      } catch {}
     }
   }
 
@@ -42,7 +46,7 @@ const getBaseURL = () => {
     const { origin, hostname, protocol, port } = window.location
 
     if (hostname && hostname.includes('onrender.com')) {
-      return 'https://student-management-system-9yuf.onrender.com/api'
+      return RENDER_BACKEND_FALLBACK
     }
 
     if (origin && origin !== 'null' && (origin.startsWith('http://') || origin.startsWith('https://'))) {

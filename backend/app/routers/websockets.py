@@ -34,6 +34,7 @@ manager = ConnectionManager()
 router = APIRouter(tags=["WebSockets"])
 
 
+@router.websocket("/ws/{user_id}")
 @router.websocket("/ws/notifications/{user_id}")
 async def websocket_notifications(websocket: WebSocket, user_id: int):
     await manager.connect(user_id, websocket)
