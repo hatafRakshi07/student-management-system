@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_, and_, desc
 from datetime import datetime, date, timedelta
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from app.database import get_db
 from app.models.user import User, UserRole
@@ -35,36 +35,28 @@ def list_all_fees(
     _=Depends(require_teacher_or_admin),
     db: Session = Depends(get_db)
 ):
-    """
-    Phases 5 & 6: Production Multi-Criteria Search & Filtering for Fee Receipts.
-    Searches by Student Name, Scholar No, Reg No, Voucher No, Receipt No, Father Name, Mobile, Class, Course, Session.
-    Filters by Session, Course, Class, Section, Payment Mode, Date Range, Status (PAID/UNPAID/PARTIAL).
-    """
     q = db.query(FeeReceipt, User, StudentProfile)\
         .join(User, FeeReceipt.student_id == User.id)\
         .outerjoin(StudentProfile, User.id == StudentProfile.user_id)
 
-    # General Search Query
     if search:
         s_like = f"%{search}%"
         q = q.filter(
-            User.full_name.ilike(s_like) |
-            User.phone.ilike(s_like) |
-            StudentProfile.roll_number.ilike(s_like) |
-            StudentProfile.reg_no.ilike(s_like) |
-            StudentProfile.father_name.ilike(s_like) |
-            StudentProfile.student_name.ilike(s_like) |
-            FeeReceipt.receipt_no.ilike(s_like) |
-            FeeReceipt.voucher_no.ilike(s_like) |
-            StudentProfile.class_name.ilike(s_like) |
-            StudentProfile.department.ilike(s_like)
+            or_(
+                FeeReceipt.receipt_no.ilike(s_like),
+                FeeReceipt.voucher_no.ilike(s_like),
+                User.full_name.ilike(s_like),
+                StudentProfile.roll_number.ilike(s_like),
+                StudentProfile.reg_no.ilike(s_like),
+                StudentProfile.father_name.ilike(s_like),
+                User.phone.ilike(s_like)
+            )
         )
 
-    # Specific Criteria Filters
     if student_name:
-        q = q.filter(User.full_name.ilike(f"%{student_name}%") | StudentProfile.student_name.ilike(f"%{student_name}%"))
+        q = q.filter(User.full_name.ilike(f"%{student_name}%"))
     if scholar_no:
-        q = q.filter(StudentProfile.roll_number.ilike(f"%{scholar_no}%") | StudentProfile.reg_no.ilike(f"%{scholar_no}%"))
+        q = q.filter(StudentProfile.roll_number.ilike(f"%{scholar_no}%"))
     if voucher_no:
         q = q.filter(FeeReceipt.voucher_no.ilike(f"%{voucher_no}%"))
     if receipt_no:
@@ -72,102 +64,146 @@ def list_all_fees(
     if father_name:
         q = q.filter(StudentProfile.father_name.ilike(f"%{father_name}%"))
     if mobile:
-        q = q.filter(User.phone.ilike(f"%{mobile}%") | StudentProfile.mobile.ilike(f"%{mobile}%") | StudentProfile.father_mobile.ilike(f"%{mobile}%"))
-    if class_name:
-        q = q.filter(StudentProfile.class_name.ilike(f"%{class_name}%"))
-    if course:
-        q = q.filter(StudentProfile.department.ilike(f"%{course}%"))
+        q = q.filter(User.phone.ilike(f"%{mobile}%"))
+    if class_name or course:
+        cls_target = class_name or course
+        q = q.filter(StudentProfile.class_name.ilike(f"%{cls_target}%"))
     if session:
-        q = q.filter(FeeReceipt.session == session)
-    if payment_mode:
+        q = q.filter(FeeReceipt.session.ilike(f"%{session}%"))
+    if payment_mode and payment_mode.upper() != "ALL":
         q = q.filter(FeeReceipt.payment_mode.ilike(f"%{payment_mode}%"))
 
     if start_date:
         try:
-            s_dt = datetime.strptime(start_date, "%Y-%m-%d")
-            q = q.filter(FeeReceipt.receipt_date >= s_dt)
-        except ValueError:
+            d_start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            q = q.filter(func.date(FeeReceipt.receipt_date) >= d_start)
+        except Exception:
             pass
     if end_date:
         try:
-            e_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-            q = q.filter(FeeReceipt.receipt_date < e_dt)
-        except ValueError:
+            d_end = datetime.strptime(end_date, "%Y-%m-%d").date()
+            q = q.filter(func.date(FeeReceipt.receipt_date) <= d_end)
+        except Exception:
             pass
 
-    total_count = q.count()
-    results = q.order_by(FeeReceipt.receipt_id.desc()).offset(skip).limit(limit).all()
+    total = q.count()
+    results = q.order_by(desc(FeeReceipt.receipt_id)).offset(skip).limit(limit).all()
 
-    fee_list = []
+    fee_items = []
     for rcpt, u, sp in results:
-        fee_list.append({
+        fee_items.append({
             "id": rcpt.receipt_id,
             "receipt_id": rcpt.receipt_id,
-            "student_id": u.id,
-            "student_name": u.full_name or (sp.student_name if sp else f"Student #{u.id}"),
-            "father_name": sp.father_name if sp else None,
-            "scholar_no": sp.roll_number if sp else None,
-            "class_name": sp.class_name if sp else None,
-            "course": sp.department if sp else None,
             "receipt_no": rcpt.receipt_no or str(rcpt.receipt_id),
             "voucher_no": rcpt.voucher_no or str(rcpt.receipt_id),
-            "amount": rcpt.amount or 0.0,
-            "discount": rcpt.discount or 0.0,
-            "fine": rcpt.fine + rcpt.late_fee,
-            "fee_type": f"Fee Receipt #{rcpt.receipt_no or rcpt.receipt_id}",
+            "student_id": u.id,
+            "student_name": u.full_name or (sp.student_name if sp else f"Student #{u.id}"),
+            "scholar_no": sp.roll_number if sp else None,
+            "reg_no": sp.reg_no if sp else None,
+            "father_name": sp.father_name if sp else None,
+            "class_name": sp.class_name if sp else None,
+            "mobile": u.phone if u else None,
+            "amount": rcpt.amount,
             "payment_mode": rcpt.payment_mode or "CASH",
-            "bank_name": rcpt.bank_name,
-            "status": "paid",
-            "due_date": (rcpt.receipt_date or rcpt.created_at).isoformat() if (rcpt.receipt_date or rcpt.created_at) else None,
-            "payment_date": (rcpt.receipt_date or rcpt.created_at).isoformat() if (rcpt.receipt_date or rcpt.created_at) else None,
+            "receipt_date": rcpt.receipt_date.strftime("%Y-%m-%d") if rcpt.receipt_date else None,
             "session": rcpt.session or "2024-25",
-            "remarks": rcpt.remarks,
-            "created_by": rcpt.created_by or "System Administrator"
+            "created_by": rcpt.created_by or "Office",
+            "status": "PAID"
         })
 
     return {
-        "total_count": total_count,
-        "skip": skip,
-        "limit": limit,
-        "fees": fee_list
+        "total": total,
+        "fees": fee_items
+    }
+
+
+@router.post("/collect", status_code=201)
+@router.post("", status_code=201)
+def collect_fee_payment(
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_teacher_or_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Phase 5: Collect Fee Payment & Issue Receipt Voucher.
+    """
+    student_id = payload.get("student_id")
+    amount = float(payload.get("amount", 0.0))
+    payment_mode = payload.get("payment_mode", "CASH")
+    remarks = payload.get("remarks", "Fee Deposit")
+
+    if not student_id or amount <= 0:
+        raise HTTPException(status_code=400, detail="Invalid student_id or payment amount")
+
+    receipt_count = db.query(FeeReceipt).count() + 1001
+    receipt_no = f"REC-2024-{receipt_count}"
+    voucher_no = f"VCH-{receipt_count}"
+
+    rcpt = FeeReceipt(
+        student_id=student_id,
+        receipt_no=receipt_no,
+        voucher_no=voucher_no,
+        amount=amount,
+        payment_mode=payment_mode,
+        receipt_date=date.today(),
+        session="2024-25",
+        remarks=remarks,
+        created_by=current_user.full_name
+    )
+    db.add(rcpt)
+    db.flush()
+
+    # Recalculate Student Fee Summary
+    fs = db.query(FeeSummary).filter(FeeSummary.student_id == student_id).first()
+    if fs:
+        fs.total_paid = (fs.total_paid or 0.0) + amount
+        fs.pending_fee = max(0.0, (fs.total_fee or 0.0) - fs.total_paid)
+        fs.current_status = "PAID" if fs.pending_fee <= 0 else "PARTIAL"
+
+    db.commit()
+
+    return {
+        "id": rcpt.receipt_id,
+        "receipt_id": rcpt.receipt_id,
+        "receipt_no": rcpt.receipt_no,
+        "voucher_no": rcpt.voucher_no,
+        "amount": rcpt.amount,
+        "payment_mode": rcpt.payment_mode,
+        "message": "Fee collected successfully"
     }
 
 
 @router.get("/stats")
-def fee_stats(_=Depends(require_teacher_or_admin), db: Session = Depends(get_db)):
-    """
-    Phase 4: Complete Admin Fee Dashboard Metrics & Analytics.
-    Includes Today's, Yesterday's, Monthly, and Yearly Collections, Mode breakdowns (Cash/Online/NEFT/Cheque),
-    Top Defaulters, Highest Fee Paid student, and Collection Trends graphs.
-    """
-    now = datetime.utcnow()
-    today_start = datetime(now.year, now.month, now.day)
-    yesterday_start = today_start - timedelta(days=1)
-    month_start = datetime(now.year, now.month, 1)
-    year_start = datetime(now.year, 1, 1)
-
-    # Collection Timeframes
-    today_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.receipt_date >= today_start).scalar() or 0.0
-    yesterday_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.receipt_date >= yesterday_start, FeeReceipt.receipt_date < today_start).scalar() or 0.0
-    monthly_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.receipt_date >= month_start).scalar() or 0.0
-    yearly_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.receipt_date >= year_start).scalar() or 0.0
-
-    # Payment Mode Breakdown
-    cash_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.payment_mode.ilike("%CASH%")).scalar() or 0.0
-    online_coll = db.query(func.sum(FeeReceipt.amount)).filter(or_(FeeReceipt.payment_mode.ilike("%ONLINE%"), FeeReceipt.payment_mode.ilike("%UPI%"), FeeReceipt.payment_mode.ilike("%CARD%"))).scalar() or 0.0
-    cheque_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.payment_mode.ilike("%CHEQUE%")).scalar() or 0.0
-    neft_coll = db.query(func.sum(FeeReceipt.amount)).filter(or_(FeeReceipt.payment_mode.ilike("%NEFT%"), FeeReceipt.payment_mode.ilike("%RTGS%"), FeeReceipt.payment_mode.ilike("%BANK%"))).scalar() or 0.0
-
-    # Overall Summary Metrics
+def get_fee_stats(_=Depends(require_teacher_or_admin), db: Session = Depends(get_db)):
     total_fee = db.query(func.sum(FeeSummary.total_fee)).scalar() or 0.0
     total_paid = db.query(func.sum(FeeSummary.total_paid)).scalar() or 0.0
     total_pending = db.query(func.sum(FeeSummary.pending_fee)).scalar() or 0.0
 
-    count_paid = db.query(FeeSummary).filter(FeeSummary.current_status == "PAID").count()
-    count_unpaid = db.query(FeeSummary).filter(FeeSummary.current_status == "UNPAID").count()
-    count_partial = db.query(FeeSummary).filter(FeeSummary.current_status == "PARTIAL").count()
+    now = datetime.now()
+    today_start = datetime(now.year, now.month, now.day)
+    yesterday_start = today_start - timedelta(days=1)
 
-    # Top Defaulters (highest pending fee)
+    today_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.receipt_date >= today_start.date()).scalar() or 0.0
+    yesterday_coll = db.query(func.sum(FeeReceipt.amount)).filter(
+        FeeReceipt.receipt_date >= yesterday_start.date(),
+        FeeReceipt.receipt_date < today_start.date()
+    ).scalar() or 0.0
+
+    month_start = datetime(now.year, now.month, 1).date()
+    monthly_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.receipt_date >= month_start).scalar() or 0.0
+
+    year_start = datetime(now.year, 1, 1).date()
+    yearly_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.receipt_date >= year_start).scalar() or 0.0
+
+    cash_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.payment_mode.ilike("%CASH%")).scalar() or 0.0
+    online_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.payment_mode.ilike("%ONLINE%")).scalar() or 0.0
+    cheque_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.payment_mode.ilike("%CHEQUE%")).scalar() or 0.0
+    neft_coll = db.query(func.sum(FeeReceipt.amount)).filter(FeeReceipt.payment_mode.ilike("%NEFT%")).scalar() or 0.0
+
+    count_paid = db.query(FeeSummary).filter(FeeSummary.pending_fee <= 0).count()
+    count_unpaid = db.query(FeeSummary).filter(FeeSummary.total_paid == 0).count()
+    count_partial = db.query(FeeSummary).filter(FeeSummary.pending_fee > 0, FeeSummary.total_paid > 0).count()
+
     defaulters_q = db.query(FeeSummary, User, StudentProfile)\
         .join(User, FeeSummary.student_id == User.id)\
         .outerjoin(StudentProfile, User.id == StudentProfile.user_id)\
@@ -187,7 +223,6 @@ def fee_stats(_=Depends(require_teacher_or_admin), db: Session = Depends(get_db)
             "status": fs.current_status
         })
 
-    # Highest Fee Paid Student
     top_payer_rec = db.query(FeeSummary, User, StudentProfile)\
         .join(User, FeeSummary.student_id == User.id)\
         .outerjoin(StudentProfile, User.id == StudentProfile.user_id)\
@@ -203,7 +238,6 @@ def fee_stats(_=Depends(require_teacher_or_admin), db: Session = Depends(get_db)
             "total_paid": fs.total_paid
         }
 
-    # Collection Trend (Monthly Time Series)
     trend = []
     for i in range(5, -1, -1):
         m_dt = now - timedelta(days=i*30)
@@ -243,14 +277,10 @@ def fee_stats(_=Depends(require_teacher_or_admin), db: Session = Depends(get_db)
 
 @router.get("/receipt/{receipt_id}")
 def get_official_receipt(receipt_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """
-    Phase 7: Printable & Downloadable Official College Fee Receipt Payload.
-    """
     rcpt = db.query(FeeReceipt).filter(FeeReceipt.receipt_id == receipt_id).first()
     if not rcpt:
         raise HTTPException(status_code=404, detail="Fee receipt not found")
 
-    # Enforce student access security (students read own receipts only)
     if current_user.role == UserRole.student and rcpt.student_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -296,109 +326,12 @@ def get_official_receipt(receipt_id: int, current_user: User = Depends(get_curre
     }
 
 
-@router.get("/reports/{report_type}")
-def get_financial_reports(
-    report_type: str,
-    session: Optional[str] = None,
-    course: Optional[str] = None,
-    class_name: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    _=Depends(require_teacher_or_admin),
-    db: Session = Depends(get_db)
-):
-    """
-    Phase 8: Production Financial Reports API Engine.
-    Generates Daily Collection, Monthly Collection, Yearly Collection, Course-wise, Class-wise,
-    Session-wise, Pending Fee Report, Student Ledger, and Cash Book registers.
-    """
-    if report_type == "daily-collection":
-        today_date = date.today()
-        q = db.query(FeeReceipt, User, StudentProfile).join(User, FeeReceipt.student_id == User.id).outerjoin(StudentProfile, User.id == StudentProfile.user_id)
-        if start_date:
-            q = q.filter(func.date(FeeReceipt.receipt_date) == start_date)
-        else:
-            q = q.filter(func.date(FeeReceipt.receipt_date) == today_date)
-        records = q.all()
-        return {"report_title": "Daily Collection Register", "date": start_date or str(today_date), "count": len(records), "records": [{
-            "receipt_no": r.receipt_no, "student_name": u.full_name, "scholar_no": sp.roll_number if sp else None,
-            "amount": r.amount, "mode": r.payment_mode, "date": r.receipt_date
-        } for r, u, sp in records]}
-
-    elif report_type == "course-wise":
-        res = db.query(StudentProfile.department, func.sum(FeeReceipt.amount), func.count(FeeReceipt.receipt_id))\
-            .join(FeeReceipt, StudentProfile.user_id == FeeReceipt.student_id)\
-            .group_by(StudentProfile.department).all()
-        return {"report_title": "Course-Wise Collection Summary", "data": [{
-            "course": dept or "General", "total_amount": float(amt or 0.0), "receipt_count": cnt
-        } for dept, amt, cnt in res]}
-
-    elif report_type == "class-wise":
-        res = db.query(StudentProfile.class_name, func.sum(FeeReceipt.amount), func.count(FeeReceipt.receipt_id))\
-            .join(FeeReceipt, StudentProfile.user_id == FeeReceipt.student_id)\
-            .group_by(StudentProfile.class_name).all()
-        return {"report_title": "Class-Wise Collection Summary", "data": [{
-            "class_name": cls or "Unassigned", "total_amount": float(amt or 0.0), "receipt_count": cnt
-        } for cls, amt, cnt in res]}
-
-    elif report_type == "pending-report":
-        res = db.query(FeeSummary, User, StudentProfile)\
-            .join(User, FeeSummary.student_id == User.id)\
-            .outerjoin(StudentProfile, User.id == StudentProfile.user_id)\
-            .filter(FeeSummary.pending_fee > 0).order_by(desc(FeeSummary.pending_fee)).all()
-        return {"report_title": "Pending Fee & Defaulter Register", "count": len(res), "records": [{
-            "student_id": u.id, "student_name": u.full_name or (sp.student_name if sp else f"Student #{u.id}"),
-            "scholar_no": sp.roll_number if sp else None, "class_name": sp.class_name if sp else None,
-            "mobile": u.phone or (sp.mobile if sp else None), "pending_fee": fs.pending_fee, "total_fee": fs.total_fee
-        } for fs, u, sp in res]}
-
-    elif report_type == "cash-book":
-        res = db.query(FeeReceipt.payment_mode, func.sum(FeeReceipt.amount), func.count(FeeReceipt.receipt_id))\
-            .group_by(FeeReceipt.payment_mode).all()
-        return {"report_title": "Cash Book & Mode-Wise Financial Register", "data": [{
-            "payment_mode": mode or "CASH", "total_amount": float(amt or 0.0), "count": cnt
-        } for mode, amt, cnt in res]}
-
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported report type")
-
-
 @router.delete("/{receipt_id}")
 def delete_receipt(receipt_id: int, _=Depends(require_admin), db: Session = Depends(get_db)):
-    """
-    Phase 11: Security & Transaction Deletion (Admin only).
-    """
     rcpt = db.query(FeeReceipt).filter(FeeReceipt.receipt_id == receipt_id).first()
     if not rcpt:
         raise HTTPException(status_code=404, detail="Fee receipt not found")
     
-    student_id = rcpt.student_id
     db.delete(rcpt)
-    db.flush()
-
-    # Recalculate Student Fee Summary
-    from app.services.audit_service import verify_and_repair_fee_data
-    verify_and_repair_fee_data(db)
     db.commit()
-
-    return {"message": "Receipt deleted and student fee summary updated"}
-
-
-@router.post("/{receipt_id}/reverse")
-def reverse_payment(receipt_id: int, payload: dict, _=Depends(require_admin), db: Session = Depends(get_db)):
-    """
-    Phase 11: Security & Payment Reversal (Admin only).
-    """
-    rcpt = db.query(FeeReceipt).filter(FeeReceipt.receipt_id == receipt_id).first()
-    if not rcpt:
-        raise HTTPException(status_code=404, detail="Fee receipt not found")
-
-    rcpt.remarks = f"[REVERSED] {payload.get('reason', 'Payment Reversed by Admin')} | Prior Amt: ₹{rcpt.amount}"
-    rcpt.amount = 0.0
-    db.flush()
-
-    from app.services.audit_service import verify_and_repair_fee_data
-    verify_and_repair_fee_data(db)
-    db.commit()
-
-    return {"message": "Payment reversed successfully and fee summary updated"}
+    return {"message": "Receipt deleted successfully"}
