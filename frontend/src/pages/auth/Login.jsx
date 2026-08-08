@@ -35,8 +35,12 @@ export default function Login() {
       navigate(routes[user.role] || '/')
       toast.success(`Welcome back, ${user.full_name}!`)
     } catch (err) {
-      const detail = err.response?.data?.detail || err.response?.data?.error || err.message
-      const msg = typeof detail === 'string' ? detail : (detail?.message || detail?.error || (Array.isArray(detail) ? detail.map(d => d.msg || d.message).join(', ') : 'Login failed'))
+      console.error('Login error:', err)
+      const rawDetail = err.response?.data?.detail || err.response?.data?.error || err.message
+      let msg = typeof rawDetail === 'string' ? rawDetail : (rawDetail?.message || rawDetail?.error || (Array.isArray(rawDetail) ? rawDetail.map(d => d.msg || d.message).join(', ') : 'Login failed'))
+      if (msg.includes('Invalid URL')) {
+        msg = 'Connection error. Please try clicking login again or refresh the page.'
+      }
       toast.error(msg)
     } finally {
       setLoading(false)

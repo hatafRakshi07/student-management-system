@@ -3,20 +3,30 @@ import toast from 'react-hot-toast'
 
 const getBaseURL = () => {
   const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
-  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim() && envUrl !== 'undefined' && envUrl !== 'null') {
     const trimmed = envUrl.trim()
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+      return trimmed.endsWith('/api') ? trimmed : `${trimmed.replace(/\/+$/, '')}/api`
     }
-    const cleanPath = trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
-    return `${origin}${cleanPath.startsWith('/') ? '' : '/'}${cleanPath}`
   }
-  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
-    return 'https://student-management-system-9yuf.onrender.com/api'
+
+  if (typeof window !== 'undefined' && window.location) {
+    const { origin, hostname, protocol, port } = window.location
+    if (hostname && hostname.includes('onrender.com')) {
+      return 'https://student-management-system-9yuf.onrender.com/api'
+    }
+    if (origin && origin !== 'null' && (origin.startsWith('http://') || origin.startsWith('https://'))) {
+      return `${origin.replace(/\/+$/, '')}/api`
+    }
+    if (hostname && hostname !== 'null') {
+      const p = (protocol && protocol.startsWith('http')) ? protocol : 'http:'
+      const pt = port ? `:${port}` : ''
+      return `${p}//${hostname}${pt}/api`
+    }
   }
-  return typeof window !== 'undefined' ? `${origin}/api` : '/api'
+
+  return 'http://localhost:5173/api'
 }
 
 const apiBaseURL = getBaseURL()

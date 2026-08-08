@@ -24,9 +24,10 @@ export function NotificationProvider({ children }) {
     const interval = setInterval(fetchNotifications, 60000)
 
     let socket = null
-    if (user?.id) {
+    if (user?.id && typeof window !== 'undefined' && window.location) {
+      const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const host = window.location.hostname === 'localhost' ? 'localhost:8000' : window.location.host
+      const host = isDev ? `${window.location.hostname}:8000` : (window.location.host || 'localhost:8000')
       const wsUrl = `${protocol}//${host}/ws/${user.id}`
 
       try {
