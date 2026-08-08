@@ -249,11 +249,20 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Request interceptor - attach JWT token & ensure valid absolute baseURL
+// Request interceptor - attach JWT token & convert config.url into a guaranteed absolute URL
 api.interceptors.request.use((config) => {
-  if (!config.baseURL || (!config.baseURL.startsWith('http://') && !config.baseURL.startsWith('https://'))) {
-    config.baseURL = getBaseURL()
+  let base = config.baseURL
+  if (!base || (!base.startsWith('http://') && !base.startsWith('https://'))) {
+    base = getBaseURL()
   }
+
+  if (config.url && !config.url.startsWith('http://') && !config.url.startsWith('https://')) {
+    const cleanBase = base.endsWith('/') ? base : `${base}/`
+    const cleanRelative = config.url.replace(/^\/+/, '')
+    config.url = `${cleanBase}${cleanRelative}`
+    config.baseURL = ''
+  }
+
   const token = localStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
