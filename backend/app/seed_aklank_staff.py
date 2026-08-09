@@ -4,6 +4,12 @@ Populates 22 official records (18 Teaching, 3 Non-Teaching, 1 Administrative Pri
 Uses upsert logic (matching employee_code or normalized full_name) to avoid duplicates.
 """
 
+import os
+import sys
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from datetime import datetime, date
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
@@ -11,7 +17,8 @@ from sqlalchemy import func
 
 from app.database import SessionLocal
 from app.models.user import User, UserRole
-from app.models.teacher import TeacherProfile
+
+from app.models.teacher import TeacherProfile, TeacherCourseAssignment
 from app.models.hr import (
     StaffDetail, StaffSalaryStructure, StaffLeaveBalance,
     EmploymentType, StaffStatus

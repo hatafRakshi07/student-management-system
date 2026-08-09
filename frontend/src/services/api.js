@@ -177,7 +177,11 @@ export const feeAPI = {
   pay: (id, data) => api.put(`/fees/${id}/pay`, data),
   stats: () => api.get('/fees/stats'),
   getReceipt: (id) => api.get(`/fees/receipt/${id}`),
+  studentHistory: (id) => api.get(`/fees/student/${id}/history`),
+  myHistory: () => api.get('/fees/my/history'),
 }
+export const feesAPI = feeAPI
+
 
 export const noticeAPI = {
   list: () => api.get('/notices'),

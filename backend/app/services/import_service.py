@@ -10,8 +10,21 @@ from typing import Dict, Any, Tuple, List, Optional, Set
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
+from app.migrate_aklank_data import run_migration
 from app.models.user import User, UserRole
+
+
+def run_full_import(
+    db: Session,
+    base_dir: Optional[str] = None,
+    excel_path: Optional[str] = None,
+    csv_path: Optional[str] = None
+) -> Dict[str, Any]:
+    """Delegate to high-performance historical ERP data migration engine."""
+    return run_migration(db=db)
+
 from app.models.student import (
+
     StudentProfile, StudentAcademicHistory, StudentPromotion, StudentDocument,
     ClassMaster, SectionMaster, CategoryMaster, CourseMaster, DepartmentMaster
 )

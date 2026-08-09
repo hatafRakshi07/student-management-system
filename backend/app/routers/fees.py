@@ -470,3 +470,276 @@ def delete_receipt(receipt_id: int, _=Depends(require_admin), db: Session = Depe
     db.delete(rcpt)
     db.commit()
     return {"message": "Receipt deleted successfully"}
+
+
+def build_student_fee_history(student_id: int, db: Session) -> Dict[str, Any]:
+    """
+    Build complete year-wise fee history, installment timeline, and summary for a student.
+    Distinguishes First Year, Second Year, Third Year, and all historical sessions.
+    """
+    user = db.query(User).filter(User.id == student_id).first()
+    if not user:
+        # Check if student_id passed is StudentProfile.id
+        sp = db.query(StudentProfile).filter(StudentProfile.id == student_id).first()
+        if sp:
+            user = db.query(User).filter(User.id == sp.user_id).first()
+            student_id = sp.user_id
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    sp = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
+    fsum = db.query(FeeSummary).filter(FeeSummary.student_id == user.id).first()
+    
+    # Query Academic Histories (Sessions)
+    academic_histories = db.query(StudentAcademicHistory).filter(
+        StudentAcademicHistory.student_id == user.id
+    ).order_by(StudentAcademicHistory.session.asc()).all()
+
+    # Query all Fee Receipts for this student
+    receipts = db.query(FeeReceipt).filter(
+        FeeReceipt.student_id == user.id
+    ).order_by(FeeReceipt.receipt_date.asc(), FeeReceipt.receipt_id.asc()).all()
+
+    # Query all Fee Transactions as well
+    txs = db.query(FeeTransaction).filter(
+        or_(
+            FeeTransaction.student_id == user.id,
+            FeeTransaction.reg_no == (sp.roll_number if sp else None),
+            FeeTransaction.reg_no == (sp.reg_no if sp else None),
+            FeeTransaction.scholar_no == (sp.roll_number if sp else None)
+        )
+    ).order_by(FeeTransaction.voucher_date.asc(), FeeTransaction.id.asc()).all()
+
+    # Determine unique academic sessions
+    sessions_seen = []
+    session_class_map = {}
+    for ah in academic_histories:
+        if ah.session and ah.session not in sessions_seen:
+            sessions_seen.append(ah.session)
+            session_class_map[ah.session] = ah.class_name or (sp.class_name if sp else "General")
+
+    for r in receipts:
+        if r.session and r.session not in sessions_seen:
+            sessions_seen.append(r.session)
+            session_class_map[r.session] = sp.class_name if sp else "General"
+
+    for t in txs:
+        sess = t.installment or (t.voucher_date.strftime("%Y-%m") if t.voucher_date else "2023-24")
+        if sess and sess not in sessions_seen:
+            sessions_seen.append(sess)
+            if sess not in session_class_map:
+                session_class_map[sess] = t.class_name or (sp.class_name if sp else "General")
+
+    if not sessions_seen:
+        sessions_seen = ["2023-24"]
+        session_class_map["2023-24"] = sp.class_name if sp else "General"
+
+    sessions_seen = sorted(sessions_seen)
+
+    def get_year_title(session_str: str, class_str: Optional[str], index: int) -> str:
+        c_up = (class_str or "").upper()
+        if "PART-I" in c_up or "I-SEM" in c_up or "PART 1" in c_up:
+            return f"First Year ({session_str})"
+        elif "PART-II" in c_up or "II-SEM" in c_up or "PART 2" in c_up:
+            return f"Second Year ({session_str})"
+        elif "PART-III" in c_up or "III-SEM" in c_up or "PART 3" in c_up:
+            return f"Third Year ({session_str})"
+        elif "FINAL" in c_up:
+            return f"Final Year ({session_str})"
+        elif "PRE" in c_up:
+            return f"Previous Year ({session_str})"
+        else:
+            ordinals = ["First Year", "Second Year", "Third Year", "Fourth Year"]
+            ord_name = ordinals[index] if index < len(ordinals) else f"Year {index + 1}"
+            return f"{ord_name} ({session_str})"
+
+    def get_standard_fee(c_name: Optional[str]) -> float:
+        if not c_name:
+            return 15000.0
+        c_upper = c_name.upper()
+        if "NC B.A" in c_upper:
+            return 2000.0
+        elif "B.C.A" in c_upper or "BCA" in c_upper:
+            if "PART-III" in c_upper:
+                return 21000.0
+            elif "PART-II" in c_upper:
+                return 24000.0
+            return 25000.0
+        elif "B.SC" in c_upper:
+            return 15000.0
+        elif "M.A" in c_upper:
+            return 12000.0
+        elif "B.A" in c_upper:
+            return 12000.0
+        return 15000.0
+
+    # Group receipts and transactions by session
+    receipts_by_session: Dict[str, List[FeeReceipt]] = {s: [] for s in sessions_seen}
+    tx_by_session: Dict[str, List[FeeTransaction]] = {s: [] for s in sessions_seen}
+
+    for r in receipts:
+        target_s = r.session if (r.session and r.session in receipts_by_session) else sessions_seen[0]
+        receipts_by_session[target_s].append(r)
+
+    seen_vouchers = {r.voucher_no for r in receipts if r.voucher_no}
+
+    for t in txs:
+        if t.receipt_number not in seen_vouchers:
+            target_s = t.installment if (t.installment and t.installment in tx_by_session) else sessions_seen[0]
+            tx_by_session[target_s].append(t)
+
+    academic_years = []
+    overall_total_fee = 0.0
+    overall_total_paid = 0.0
+    overall_total_disc = 0.0
+
+    for idx, s in enumerate(sessions_seen):
+        c_name = session_class_map.get(s) or (sp.class_name if sp else "General")
+        year_title = get_year_title(s, c_name, idx)
+        std_fee = get_standard_fee(c_name)
+
+        s_receipts = receipts_by_session.get(s, [])
+        s_txs = tx_by_session.get(s, [])
+
+        s_paid = sum(r.amount for r in s_receipts) + sum(t.paid_amount for t in s_txs)
+        s_disc = sum(r.discount for r in s_receipts) + sum(t.discount_amount for t in s_txs)
+
+        # Dynamic session fee
+        s_total_fee = max(std_fee, s_paid + s_disc)
+        s_pending = max(0.0, s_total_fee - s_paid - s_disc)
+        s_progress = round((s_paid / s_total_fee * 100.0), 1) if s_total_fee > 0 else 100.0
+
+        if s_pending <= 0:
+            s_status = "PAID"
+        elif s_paid > 0:
+            s_status = "PARTIAL"
+        else:
+            s_status = "UNPAID"
+
+        # Build installments timeline
+        installments = []
+        inst_counter = 1
+
+        for r in s_receipts:
+            installments.append({
+                "installment_number": inst_counter,
+                "receipt_id": r.receipt_id,
+                "voucher_no": r.voucher_no or r.receipt_no or str(r.receipt_id),
+                "receipt_no": r.receipt_no or r.voucher_no or str(r.receipt_id),
+                "amount": r.amount,
+                "discount": r.discount,
+                "payment_date": r.receipt_date.strftime("%Y-%m-%d") if r.receipt_date else (r.created_at.strftime("%Y-%m-%d") if r.created_at else "-"),
+                "date_formatted": r.receipt_date.strftime("%d %b %Y") if r.receipt_date else "-",
+                "payment_mode": r.payment_mode or "CASH",
+                "bank_name": r.bank_name or "AKLANK COLLEGE",
+                "transaction_id": r.transaction_id or r.voucher_no or "-",
+                "remarks": r.remarks or f"Installment #{inst_counter} - {c_name}",
+                "status": "PAID"
+            })
+            inst_counter += 1
+
+        for t in s_txs:
+            installments.append({
+                "installment_number": inst_counter,
+                "receipt_id": t.id + 500000,
+                "voucher_no": t.receipt_number or str(t.id),
+                "receipt_no": t.receipt_number or str(t.id),
+                "amount": t.paid_amount,
+                "discount": t.discount_amount,
+                "payment_date": t.voucher_date.strftime("%Y-%m-%d") if t.voucher_date else (t.created_at.strftime("%Y-%m-%d") if t.created_at else "-"),
+                "date_formatted": t.voucher_date.strftime("%d %b %Y") if t.voucher_date else "-",
+                "payment_mode": t.payment_mode or "CASH",
+                "bank_name": t.bank_name or "AKLANK COLLEGE",
+                "transaction_id": t.cheque_number or t.manual_ref_no or t.receipt_number or "-",
+                "remarks": t.remarks or f"Installment #{inst_counter} - {c_name}",
+                "status": "PAID"
+            })
+            inst_counter += 1
+
+        overall_total_fee += s_total_fee
+        overall_total_paid += s_paid
+        overall_total_disc += s_disc
+
+        academic_years.append({
+            "session": s,
+            "year_title": year_title,
+            "class_name": c_name,
+            "total_fee": s_total_fee,
+            "paid_amount": s_paid,
+            "discount_amount": s_disc,
+            "pending_amount": s_pending,
+            "progress_percentage": min(100.0, s_progress),
+            "status": s_status,
+            "installments_count": len(installments),
+            "installments": installments
+        })
+
+    overall_pending = max(0.0, overall_total_fee - overall_total_paid - overall_total_disc)
+    overall_progress = round((overall_total_paid / overall_total_fee * 100.0), 1) if overall_total_fee > 0 else 100.0
+
+    if overall_pending <= 0:
+        overall_status = "PAID"
+    elif overall_total_paid > 0:
+        overall_status = "PARTIAL"
+    else:
+        overall_status = "UNPAID"
+
+    return {
+        "student": {
+            "id": user.id,
+            "profile_id": sp.id if sp else user.id,
+            "name": user.full_name or (sp.student_name if sp else "Student"),
+            "username": user.username,
+            "email": user.email,
+            "phone": user.phone or (sp.mobile if sp else "-"),
+            "scholar_no": sp.roll_number if sp else "-",
+            "reg_no": sp.reg_no if sp else "-",
+            "roll_number": sp.roll_number if sp else "-",
+            "class_name": sp.class_name if sp else "-",
+            "course": sp.department if sp else "-",
+            "department": sp.department if sp else "-",
+            "section": sp.section if sp else "-",
+            "father_name": sp.father_name if sp else "-",
+            "mother_name": sp.mother_name if sp else "-",
+            "category": sp.category if sp else "General",
+            "gender": sp.gender if sp else "-",
+            "status": sp.status if sp else "ACTIVE"
+        },
+        "overall_summary": {
+            "total_fee": overall_total_fee,
+            "total_paid": overall_total_paid,
+            "total_discount": overall_total_disc,
+            "total_pending": overall_pending,
+            "payment_progress": min(100.0, overall_progress),
+            "status": overall_status,
+            "total_academic_years": len(academic_years),
+            "last_payment_date": fsum.last_payment_date.strftime("%d-%m-%Y") if (fsum and fsum.last_payment_date) else None
+        },
+        "academic_years": academic_years
+    }
+
+
+@router.get("/student/{student_id}/history")
+def get_student_fee_history(
+    student_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get full multi-year fee and installment history for a specific student.
+    Accessible by Admin, Teachers, and the student themself.
+    """
+    if current_user.role == UserRole.student and current_user.id != student_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return build_student_fee_history(student_id, db)
+
+
+@router.get("/my/history")
+def get_my_fee_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get full multi-year fee and installment history for currently logged in student."""
+    return build_student_fee_history(current_user.id, db)
+

@@ -87,11 +87,24 @@ def _init_engine():
         except Exception:
             pass
 
+
+    # Safe column migration for SQLite fallback
+    try:
+        with sqlite_eng.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+                conn.commit()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     return sqlite_eng
 
 
 engine = _init_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 
 def check_connection() -> bool:
@@ -130,6 +143,12 @@ def create_tables():
         print("Mapper notice:", map_err)
     
     try:
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+                conn.commit()
+            except Exception:
+                pass
         Base.metadata.create_all(bind=engine)
         print("Database schema verified.")
         _tables_initialized = True

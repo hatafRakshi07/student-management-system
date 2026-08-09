@@ -268,24 +268,22 @@ export default function StudentManagement() {
               <div className="card p-4 space-y-3 bg-gray-50/50 dark:bg-gray-800/40 border border-gray-200/60 dark:border-gray-700/60">
                 <h3 className="font-bold text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 pb-2">Fee Ledger & Login Credentials</h3>
                 <div className="text-xs space-y-2 text-gray-700 dark:text-gray-300">
-                  <p><span className="font-semibold text-gray-500">Total Fee:</span> ₹{selectedStudent.total_fee || 0}</p>
-                  <p><span className="font-semibold text-gray-500">Total Paid:</span> <span className="text-emerald-600 font-bold">₹{selectedStudent.total_paid || 0}</span></p>
-                  <p><span className="font-semibold text-gray-500">Pending Balance:</span> <span className="text-amber-600 font-bold">₹{selectedStudent.pending_fee || 0}</span></p>
+                  <p><span className="font-semibold text-gray-500">Total Fee:</span> ₹{selectedStudent.total_fee?.toLocaleString() || 0}</p>
+                  <p><span className="font-semibold text-gray-500">Total Paid:</span> <span className="text-emerald-600 font-bold">₹{selectedStudent.total_paid?.toLocaleString() || 0}</span></p>
+                  <p><span className="font-semibold text-gray-500">Pending Balance:</span> <span className="text-rose-600 font-bold">₹{selectedStudent.pending_fee?.toLocaleString() || 0}</span></p>
                   <p className="pt-2 border-t border-gray-200 dark:border-gray-700"><span className="font-semibold text-gray-500">Student Username:</span> <span className="font-mono text-primary-600 dark:text-primary-400 font-bold">{selectedStudent.student_name?.toLowerCase().replace(/[^a-z0-9]/g, '')}</span></p>
-                  <p><span className="font-semibold text-gray-500">Student Password:</span> <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded font-bold text-gray-900 dark:text-white">{selectedStudent.mobile || selectedStudent.scholar_no}</span></p>
+                  <p><span className="font-semibold text-gray-500">Default Password:</span> <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded font-bold text-gray-900 dark:text-white">{selectedStudent.mobile || selectedStudent.scholar_no || 'student123'}</span></p>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setDetailModal(false)} className="btn-secondary text-xs">Close</button>
-              <button onClick={() => toast.success(`Receipt printed for ${selectedStudent.student_name}`)} className="btn-primary text-xs flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5" /> Print Fee Receipt
-              </button>
             </div>
           </div>
         </Modal>
       )}
+
 
       {/* Add Student Modal */}
       <Modal open={modal} onClose={() => setModal(false)} title="Add New Student" size="lg">

@@ -142,51 +142,37 @@ def my_assignments(current_user: User = Depends(require_student), db: Session = 
 
 @router.get("/fees")
 def my_fees(current_user: User = Depends(require_student), db: Session = Depends(get_db)):
-    from app.models.fee import FeeReceipt, FeeSummary, FeeTransaction
+    from app.routers.fees import build_student_fee_history
 
-    summary = db.query(FeeSummary).filter(FeeSummary.student_id == current_user.id).first()
-    receipts = db.query(FeeReceipt).filter(FeeReceipt.student_id == current_user.id).order_by(FeeReceipt.receipt_id.desc()).all()
-    txs = db.query(FeeTransaction).filter(FeeTransaction.student_id == current_user.id).order_by(FeeTransaction.id.desc()).all()
+    hist = build_student_fee_history(current_user.id, db)
+    summary = hist["overall_summary"]
 
-    total_amt = summary.total_fee if summary else (sum(r.amount for r in receipts) or sum(t.paid_amount for t in txs) or 45000.0)
-    paid_amt = summary.total_paid if summary else (sum(r.amount for r in receipts) or sum(t.paid_amount for t in txs) or 0.0)
-    pending_amt = summary.pending_fee if summary else max(0.0, total_amt - paid_amt)
-
-    fee_list = []
-    seen_ids = set()
-
-    for r in receipts:
-        fee_list.append({
-            "id": r.receipt_id,
-            "amount": r.amount,
-            "fee_type": f"Fee Receipt #{r.receipt_no or r.receipt_id}",
-            "description": f"Session {r.session or ''} - Mode: {r.payment_mode or 'CASH'}",
-            "due_date": r.receipt_date or r.created_at,
-            "payment_date": r.receipt_date or r.created_at,
-            "status": "paid",
-            "transaction_id": r.transaction_id or r.voucher_no
-        })
-        seen_ids.add(r.receipt_id)
-
-    for t in txs:
-        if t.id not in seen_ids:
-            fee_list.append({
-                "id": t.id + 500000,
-                "amount": t.paid_amount,
-                "fee_type": f"Fee Installment ({t.installment or '2023-24'})",
-                "description": f"Class {t.class_name or ''} - Bank / Cash Deposit",
-                "due_date": t.created_at,
-                "payment_date": t.created_at,
+    flat_fees = []
+    for ay in hist.get("academic_years", []):
+        for inst in ay.get("installments", []):
+            flat_fees.append({
+                "id": inst["receipt_id"],
+                "amount": inst["amount"],
+                "fee_type": f"{ay['year_title']} - Receipt #{inst['receipt_no']}",
+                "description": f"Class: {ay['class_name']} | Mode: {inst['payment_mode']}",
+                "due_date": inst["payment_date"],
+                "payment_date": inst["payment_date"],
                 "status": "paid",
-                "transaction_id": t.reg_no or f"TX-{t.id}"
+                "transaction_id": inst["voucher_no"]
             })
 
     return {
-        "total_amount": total_amt,
-        "paid_amount": paid_amt,
-        "pending_amount": pending_amt,
-        "fees": fee_list
+        "total_amount": summary["total_fee"],
+        "paid_amount": summary["total_paid"],
+        "pending_amount": summary["total_pending"],
+        "discount_amount": summary["total_discount"],
+        "payment_progress": summary["payment_progress"],
+        "status": summary["status"],
+        "fees": flat_fees,
+        "academic_years": hist.get("academic_years", []),
+        "student_profile": hist.get("student", {})
     }
+
 
 
 @router.get("/search")
