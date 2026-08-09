@@ -1,90 +1,80 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-// ─── Resolve the absolute backend API base URL ───────────────────────────────
-// Rules (highest → lowest priority):
-//   1. VITE_API_URL or VITE_API_BASE_URL env var (if it is a full https?:// URL)
-//   2. Render.com hostname detection → use hardcoded Render backend URL
-//   3. localhost / 127.0.0.1 → http://localhost:8000/api (Vite proxy handles /api)
-//   4. Any other origin → same-origin /api (works when frontend+backend are co-located)
-//   5. Hard fallback → http://localhost:8000/api
+// ─── Compute the absolute API base URL once, at module load time ─────────────
+//
+// Priority order:
+//   1. VITE_API_URL / VITE_API_BASE_URL env var (full https?:// URL)
+//   2. Render.com hostname → known Render backend URL
+//   3. localhost / 127.0.0.1 → http://localhost:8000/api
+//   4. Any other https origin → same-origin /api  (co-located frontend+backend)
+//   5. Hard fallback
+//
+// IMPORTANT: This MUST return a full absolute http(s):// URL.
+// Axios 1.7.x internally calls `new URL(relativeUrl, baseURL)` — if baseURL
+// is empty, undefined, or relative, it throws "Failed to construct 'URL'".
+
 export const getBaseURL = () => {
   const RENDER_BACKEND = 'https://student-management-system-9yuf.onrender.com/api'
 
-  // ── 1. Explicit env var ────────────────────────────────────────────────────
+  // 1 ─ Explicit env var from Vite/Render build-time injection
   const raw = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim()
 
   if (raw && raw !== 'undefined' && raw !== 'null') {
-    // Already a full absolute URL → return as-is (normalise trailing /api)
-    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    // Already absolute
+    if (/^https?:\/\//i.test(raw)) {
       return raw.replace(/\/api\/?$/, '') + '/api'
     }
-
-    // Relative path (e.g. "/api") → expand with current origin when available
-    if (raw.startsWith('/')) {
-      if (typeof window !== 'undefined') {
-        const { hostname, origin } = window.location
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-          return 'http://localhost:8000/api'
-        }
-        if (hostname.includes('onrender.com')) {
-          return RENDER_BACKEND
-        }
-        if (origin && origin.startsWith('http')) {
-          return origin.replace(/\/+$/, '') + '/api'
-        }
-      }
-      return 'http://localhost:8000/api'
-    }
+    // Relative path like "/api" → expand with known fallback below
   }
 
-  // ── 2. Auto-detect from browser location ──────────────────────────────────
-  if (typeof window !== 'undefined') {
-    const { hostname, origin } = window.location
+  // 2 ─ Auto-detect from browser location (safe guard in case env var is absent)
+  if (typeof window !== 'undefined' && window.location) {
+    const { hostname, protocol, port } = window.location
 
+    // Render-hosted frontend
+    if (hostname && hostname.includes('onrender.com')) {
+      return RENDER_BACKEND
+    }
+
+    // Local dev
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8000/api'
     }
-    if (hostname.includes('onrender.com')) {
-      return RENDER_BACKEND
-    }
-    if (origin && origin.startsWith('http')) {
-      return origin.replace(/\/+$/, '') + '/api'
+
+    // Any other real origin (vercel, netlify, custom domain…)
+    if (protocol === 'https:' || protocol === 'http:') {
+      const p = port ? `:${port}` : ''
+      return `${protocol}//${hostname}${p}/api`
     }
   }
 
-  // ── 3. Hard fallback ───────────────────────────────────────────────────────
-  return 'http://localhost:8000/api'
+  // 3 ─ Hard fallback (SSR / non-browser env)
+  return RENDER_BACKEND
 }
 
+// Resolve once — never changes for the lifetime of this module
+const BASE_URL = getBaseURL()
+
 // ─── Axios instance ───────────────────────────────────────────────────────────
-// DO NOT set baseURL here — we construct absolute URLs in the request interceptor.
-// Setting baseURL to anything other than a valid absolute URL causes Axios to call
-// `new URL(relativeUrl, baseURL)` which throws "Failed to construct 'URL': Invalid URL"
-// when baseURL is empty / relative.
+// baseURL is set to an absolute URL so Axios 1.7.x can safely resolve
+// relative paths like "/auth/login" via combineURLs(), which is safe and
+// never calls `new URL()` with an empty/relative base.
 const api = axios.create({
+  baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// ─── Request interceptor ─────────────────────────────────────────────────────
+// ─── Request interceptor: ONLY attach auth token ─────────────────────────────
+// Do NOT manipulate config.url or config.baseURL here.
+// The baseURL is already correct from axios.create(); touching it causes the
+// "Failed to construct 'URL': Invalid URL" error in Axios 1.7.x internals.
 api.interceptors.request.use((config) => {
-  // Ensure config.url is always an absolute URL before Axios processes it.
-  if (config.url && !config.url.startsWith('http://') && !config.url.startsWith('https://')) {
-    const base = getBaseURL().replace(/\/+$/, '')           // e.g. http://localhost:8000/api
-    const path = config.url.replace(/^\/+/, '')              // strip leading slashes
-    config.url = `${base}/${path}`
-  }
-
-  // Remove baseURL entirely so Axios never feeds it to `new URL(url, baseURL)`.
-  delete config.baseURL
-
-  // Attach JWT bearer token
   const token = localStorage.getItem('access_token')
   if (token) {
-    config.headers = config.headers || {}
+    config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${token}`
   }
-
   return config
 })
 

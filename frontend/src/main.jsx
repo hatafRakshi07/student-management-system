@@ -13,30 +13,40 @@ const updateSW = registerSW({
 })
 
 // Auto-reload page and clear stale caches if browser tries to execute a deleted JS chunk from an old build
-window.addEventListener('error', (e) => {
-  if (
-    e?.message?.includes('Loading chunk') ||
-    e?.message?.includes('Failed to fetch dynamically imported module') ||
-    e?.message?.includes('Failed to construct') ||
-    e?.message?.includes('Invalid URL')
-  ) {
-    if ('caches' in window) {
-      caches.keys().then((names) => {
-        names.forEach((name) => caches.delete(name))
-      })
-    }
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((r) => r.unregister())
-      })
-    }
-    const lastReload = sessionStorage.getItem('last_stale_reload')
-    const now = Date.now()
-    if (!lastReload || now - parseInt(lastReload, 10) > 5000) {
-      sessionStorage.setItem('last_stale_reload', now.toString())
-      window.location.reload()
-    }
+// or if a service worker is caching an outdated bundle
+const _clearAndReload = () => {
+  if ('caches' in window) {
+    caches.keys().then((names) => {
+      names.forEach((name) => caches.delete(name))
+    })
   }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((r) => r.unregister())
+    })
+  }
+  const lastReload = sessionStorage.getItem('last_stale_reload')
+  const now = Date.now()
+  if (!lastReload || now - parseInt(lastReload, 10) > 5000) {
+    sessionStorage.setItem('last_stale_reload', now.toString())
+    window.location.reload()
+  }
+}
+
+const _isStaleChunkError = (msg) =>
+  msg && (
+    msg.includes('Loading chunk') ||
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Failed to construct') ||
+    msg.includes('Invalid URL')
+  )
+
+window.addEventListener('error', (e) => {
+  if (_isStaleChunkError(e?.message)) _clearAndReload()
+})
+
+window.addEventListener('unhandledrejection', (e) => {
+  if (_isStaleChunkError(e?.reason?.message)) _clearAndReload()
 })
 
 ReactDOM.createRoot(document.getElementById('root')).render(
