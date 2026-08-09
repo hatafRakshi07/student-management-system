@@ -176,6 +176,7 @@ export const feeAPI = {
   create: (data) => api.post('/fees', data),
   pay: (id, data) => api.put(`/fees/${id}/pay`, data),
   stats: () => api.get('/fees/stats'),
+  getReceipt: (id) => api.get(`/fees/receipt/${id}`),
 }
 
 export const noticeAPI = {
