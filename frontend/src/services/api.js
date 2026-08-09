@@ -25,31 +25,31 @@ export const getBaseURL = () => {
     if (/^https?:\/\//i.test(raw)) {
       return raw.replace(/\/api\/?$/, '') + '/api'
     }
-    // Relative path like "/api" → expand with known fallback below
   }
 
-  // 2 ─ Auto-detect from browser location (safe guard in case env var is absent)
+  // 2 ─ Auto-detect from browser location
   if (typeof window !== 'undefined' && window.location) {
     const { hostname, protocol, port } = window.location
 
-    // Render-hosted frontend
+    // Render-hosted frontend → talk directly to Render backend (same infra)
     if (hostname && hostname.includes('onrender.com')) {
       return RENDER_BACKEND
     }
 
-    // Local dev
+    // Local dev → Vite proxy forwards /api to localhost:8000
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8000/api'
     }
 
-    // Any other real origin (vercel, netlify, custom domain…)
+    // Vercel / Netlify / custom domain → use same-origin /api which vercel.json
+    // proxies to the Render backend. This avoids CORS issues entirely.
     if (protocol === 'https:' || protocol === 'http:') {
       const p = port ? `:${port}` : ''
       return `${protocol}//${hostname}${p}/api`
     }
   }
 
-  // 3 ─ Hard fallback (SSR / non-browser env)
+  // 3 ─ Hard fallback
   return RENDER_BACKEND
 }
 
