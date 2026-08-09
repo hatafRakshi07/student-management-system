@@ -26,3 +26,8 @@ class Leave(Base):
 
     student = relationship("User", foreign_keys=[student_id])
     reviewed_by = relationship("User", foreign_keys=[reviewed_by_id])
+
+
+# Alias for backward compatibility
+LeaveRequest = Leave
+

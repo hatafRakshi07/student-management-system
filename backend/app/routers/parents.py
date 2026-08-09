@@ -15,7 +15,7 @@ from app.models.parent import (
     RelationshipType, PTMStatus
 )
 from app.models.notice import Notice
-from app.models.leave import LeaveRequest
+from app.models.leave import Leave, LeaveRequest
 from app.utils.auth_deps import require_admin, require_teacher_or_admin, get_current_user
 
 router = APIRouter(prefix="/api/parent", tags=["Parent Portal & Communication Hub"])
@@ -242,9 +242,9 @@ def get_parent_dashboard(
     } for p in ptm_requests]
 
     # 6. Leaves
-    leaves = db.query(LeaveRequest).filter(
-        or_(LeaveRequest.student_id == actual_student_user_id, LeaveRequest.student_id == actual_student_profile_id)
-    ).order_by(desc(LeaveRequest.created_at)).limit(5).all() if 'LeaveRequest' in globals() else []
+    leaves = db.query(Leave).filter(
+        or_(Leave.student_id == actual_student_user_id, Leave.student_id == actual_student_profile_id)
+    ).order_by(desc(getattr(Leave, "applied_at", Leave.id))).limit(5).all() if 'Leave' in globals() else []
 
     leaves_list = [{
         "id": lv.id,
