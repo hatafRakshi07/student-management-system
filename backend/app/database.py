@@ -137,6 +137,8 @@ def create_tables():
         try:
             from app.seed import seed_database
             seed_database()
+            from app.seed_aklank_staff import seed_aklank_staff_data
+            seed_aklank_staff_data()
         except Exception as seed_err:
             print("Seed notice:", seed_err)
     except Exception as err:

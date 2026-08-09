@@ -124,6 +124,11 @@ def seed_database():
             db.add(notice)
 
         db.commit()
+
+        # 7. Seed Official Aklank College Staff & Faculty Directory (22 records)
+        from app.seed_aklank_staff import seed_aklank_staff_data
+        seed_aklank_staff_data(db)
+
         print("Seeding completed successfully!")
     except Exception as e:
         db.rollback()

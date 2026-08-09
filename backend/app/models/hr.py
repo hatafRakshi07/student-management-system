@@ -48,8 +48,13 @@ class StaffDetail(Base):
     address = Column(Text, nullable=True)
     
     qualification = Column(String(255), nullable=True)
-    experience_years = Column(Float, default=0.0)
+    experience_years = Column(Float, nullable=True)
     teaching_subjects = Column(String(500), nullable=True)
+    subject = Column(String(255), nullable=True)
+    title = Column(String(50), nullable=True)
+    is_hod = Column(Boolean, default=False)
+    data_source = Column(String(255), default="Official Aklank College Website")
+    last_verified_at = Column(DateTime, default=datetime.utcnow)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

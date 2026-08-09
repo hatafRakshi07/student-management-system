@@ -129,8 +129,13 @@ export const studentAPI = {
 
 export const teacherAPI = {
   list: (params) => api.get('/teachers', { params }),
+  stats: () => api.get('/teachers/stats'),
+  get: (id) => api.get(`/teachers/${id}`),
   profile: () => api.get('/teachers/profile'),
+  create: (data) => api.post('/teachers', data),
+  update: (id, data) => api.put(`/teachers/${id}`, data),
   delete: (id) => api.delete(`/teachers/${id}`),
+  validationReport: () => api.get('/teachers/validation-report'),
 }
 
 export const attendanceAPI = {
