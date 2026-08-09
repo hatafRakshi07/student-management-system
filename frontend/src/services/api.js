@@ -222,9 +222,12 @@ export const timetableAPI = {
 }
 
 export const parentAPI = {
-  dashboard: () => api.get('/parents/dashboard'),
-  childAttendance: () => api.get('/parents/child/attendance'),
-  childMarks: () => api.get('/parents/child/marks'),
+  dashboard: (studentId) => api.get(studentId ? `/parent/dashboard/${studentId}` : '/parent/dashboard'),
+  requestPTM: (data) => api.post('/parent/meetings/request', data),
+  getMeetings: () => api.get('/parent/meetings'),
+  childAttendance: (id) => api.get(id ? `/parent/child/attendance?student_id=${id}` : '/parent/child/attendance'),
+  childMarks: (id) => api.get(id ? `/parent/child/marks?student_id=${id}` : '/parent/child/marks'),
+  childFees: (id) => api.get(id ? `/parent/child/fees?student_id=${id}` : '/parent/child/fees'),
 }
 
 export const subjectAPI = {

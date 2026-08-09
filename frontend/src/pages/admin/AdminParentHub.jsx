@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { Users, Search, Link, CheckCircle, XCircle, Clock, Calendar, Mail, Phone } from 'lucide-react'
 
@@ -11,10 +11,8 @@ export default function AdminParentHub() {
   const loadParents = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.get('/api/parent/admin/directory', {
-        params: { search },
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await api.get('/parent/admin/directory', {
+        params: { search }
       })
       setParents(res.data.parents || [])
     } catch {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api, { parentAPI, feeAPI, examAPI } from '../../services/api'
 import toast from 'react-hot-toast'
 import ReceiptModal from '../../components/fees/ReceiptModal'
 import MarksheetModal from '../../components/exams/MarksheetModal'
@@ -26,11 +26,8 @@ export default function ParentDashboard() {
   const loadDashboard = async (studentId = null) => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
-      const targetId = studentId || selectedStudentId || 1
-      const res = await axios.get(`/api/parent/dashboard/${targetId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const targetId = studentId || selectedStudentId
+      const res = await parentAPI.dashboard(targetId)
       setData(res.data)
       if (res.data.active_student) {
         setSelectedStudentId(res.data.active_student.student_id)
@@ -54,15 +51,14 @@ export default function ParentDashboard() {
   const handlePTMSubmit = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post('/api/parent/meetings/request', {
+      const res = await parentAPI.requestPTM({
         student_id: selectedStudentId,
         requested_date: ptmDate,
         preferred_time: ptmTime,
         purpose: ptmPurpose
-      }, { headers: { Authorization: `Bearer ${token}` } })
+      })
 
-      toast.success('PTM Meeting Requested Successfully!')
+      toast.success(res.data?.message || 'PTM Meeting Requested Successfully!')
       setPtmModalOpen(false)
       loadDashboard(selectedStudentId)
     } catch {
@@ -72,10 +68,7 @@ export default function ParentDashboard() {
 
   const viewReceipt = async (receiptId) => {
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.get(`/api/fees/receipt/${receiptId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.get(`/fees/receipt/${receiptId}`)
       setSelectedReceipt(res.data)
       setReceiptModalOpen(true)
     } catch {
@@ -85,10 +78,7 @@ export default function ParentDashboard() {
 
   const viewMarksheet = async () => {
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.get(`/api/exams/marksheet/${selectedStudentId}/1`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.get(`/exams/marksheet/${selectedStudentId || 1}/1`)
       setSelectedMarksheet(res.data)
       setMarksheetModalOpen(true)
     } catch {
