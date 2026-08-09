@@ -149,29 +149,35 @@ export default function StudentManagement() {
               </tr>
             </thead>
             <tbody>
-              {students.map(s => (
-                <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer" onClick={() => openStudentDetail(s)}>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center text-sm font-bold text-primary-700 dark:text-primary-300 flex-shrink-0">
-                        {(s.student_name || 'S').charAt(0)}
+              {students.map(s => {
+                const name = s.student_name || s.full_name || 'Student'
+                const scholarReg = s.scholar_no || s.reg_no || s.roll_number || s.admission_no || '—'
+                const father = s.father_name || '—'
+                const mobile = s.mobile || s.phone || '—'
+
+                return (
+                  <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer" onClick={() => openStudentDetail(s)}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center text-sm font-bold text-primary-700 dark:text-primary-300 flex-shrink-0">
+                          {name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm">{name}</p>
+                          <p className="text-xs text-gray-400">{s.category || 'General'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-gray-900 dark:text-white text-sm">{s.student_name}</p>
-                        <p className="text-xs text-gray-400">{s.category || 'General'}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <p className="font-semibold text-gray-900 dark:text-white text-xs">{s.scholar_no || s.reg_no || '—'}</p>
-                    {s.reg_no && <p className="text-[11px] text-gray-400">{s.reg_no}</p>}
-                  </td>
-                  <td className="text-gray-700 dark:text-gray-300 text-sm font-medium">{s.father_name || '—'}</td>
-                  <td>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{s.class_name || '—'}</p>
-                    <p className="text-xs text-gray-400">{s.department}</p>
-                  </td>
-                  <td className="text-sm font-medium text-gray-600 dark:text-gray-300">{s.mobile || '—'}</td>
+                    </td>
+                    <td>
+                      <p className="font-semibold text-gray-900 dark:text-white text-xs">{scholarReg}</p>
+                      {s.reg_no && s.reg_no !== scholarReg && <p className="text-[11px] text-gray-400">{s.reg_no}</p>}
+                    </td>
+                    <td className="text-gray-700 dark:text-gray-300 text-sm font-medium">{father}</td>
+                    <td>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{s.class_name || '—'}</p>
+                      <p className="text-xs text-gray-400">{s.department}</p>
+                    </td>
+                    <td className="text-sm font-medium text-gray-600 dark:text-gray-300">{mobile}</td>
                   <td>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                       s.pending_fee <= 0
@@ -192,7 +198,8 @@ export default function StudentManagement() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )
+            })}
               {!students.length && !loading && (
                 <tr>
                   <td colSpan={7} className="py-12 text-center">

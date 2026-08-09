@@ -38,15 +38,33 @@ def list_students(
     total = q.count()
     results = q.offset(skip).limit(limit).all()
     return {"total": total, "students": [
-        {"id": u.id, "email": u.email, "full_name": u.full_name,
-         "phone": u.phone, "profile_photo": u.profile_photo,
-         "roll_number": sp.roll_number, "department": sp.department,
-         "class_name": sp.class_name, "section": sp.section,
-         "semester": sp.semester, "year": sp.year, "created_at": u.created_at,
-         "total_fee": fs.total_fee if fs else 0.0,
-         "total_paid": fs.total_paid if fs else 0.0,
-         "pending_fee": fs.pending_fee if fs else 0.0,
-         "fee_status": fs.current_status if fs else "UNPAID"}
+        {
+            "id": u.id,
+            "email": u.email,
+            "full_name": u.full_name,
+            "student_name": u.full_name or (sp.student_name if sp else None),
+            "phone": u.phone,
+            "mobile": u.phone or (sp.mobile if sp else None) or (sp.father_mobile if sp else None),
+            "profile_photo": u.profile_photo,
+            "roll_number": sp.roll_number if sp else None,
+            "scholar_no": sp.roll_number if sp else None,
+            "reg_no": (sp.reg_no if sp else None) or (sp.roll_number if sp else None),
+            "admission_no": sp.admission_no if sp else None,
+            "father_name": sp.father_name if sp else None,
+            "mother_name": sp.mother_name if sp else None,
+            "category": sp.category if sp else None,
+            "status": (sp.status if sp else None) or ("ACTIVE" if u.is_active else "INACTIVE"),
+            "department": sp.department if sp else None,
+            "class_name": sp.class_name if sp else None,
+            "section": sp.section if sp else None,
+            "semester": sp.semester if sp else None,
+            "year": sp.year if sp else None,
+            "created_at": u.created_at,
+            "total_fee": fs.total_fee if fs else 0.0,
+            "total_paid": fs.total_paid if fs else 0.0,
+            "pending_fee": fs.pending_fee if fs else 0.0,
+            "fee_status": fs.current_status if fs else "UNPAID"
+        }
         for u, sp, fs in results]}
 
 

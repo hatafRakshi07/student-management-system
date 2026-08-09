@@ -117,7 +117,7 @@ export const authAPI = {
 
 export const studentAPI = {
   list: (params) => api.get('/students', { params }),
-  search: (params) => api.get('/students', { params }),   // alias for search with query params
+  search: (params) => api.get('/students/search', { params }),
   profile: () => api.get('/students/profile'),
   attendance: () => api.get('/students/attendance'),
   marks: () => api.get('/students/marks'),
