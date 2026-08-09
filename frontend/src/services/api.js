@@ -1,110 +1,99 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
+// ─── Resolve the absolute backend API base URL ───────────────────────────────
+// Rules (highest → lowest priority):
+//   1. VITE_API_URL or VITE_API_BASE_URL env var (if it is a full https?:// URL)
+//   2. Render.com hostname detection → use hardcoded Render backend URL
+//   3. localhost / 127.0.0.1 → http://localhost:8000/api (Vite proxy handles /api)
+//   4. Any other origin → same-origin /api (works when frontend+backend are co-located)
+//   5. Hard fallback → http://localhost:8000/api
 export const getBaseURL = () => {
-  const rawEnv = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''
-  const RENDER_BACKEND_FALLBACK = 'https://student-management-system-9yuf.onrender.com/api'
+  const RENDER_BACKEND = 'https://student-management-system-9yuf.onrender.com/api'
 
-  if (typeof rawEnv === 'string' && rawEnv.trim() && rawEnv !== 'undefined' && rawEnv !== 'null') {
-    let envUrl = rawEnv.trim()
+  // ── 1. Explicit env var ────────────────────────────────────────────────────
+  const raw = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim()
 
-    // 1. Full URL starting with http:// or https://
-    if (envUrl.startsWith('http://') || envUrl.startsWith('https://')) {
-      return envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/+$|\s+$/g, '')}/api`
+  if (raw && raw !== 'undefined' && raw !== 'null') {
+    // Already a full absolute URL → return as-is (normalise trailing /api)
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw.replace(/\/api\/?$/, '') + '/api'
     }
 
-    // 2. Relative path like "/api" or "/api/"
-    if (envUrl.startsWith('/')) {
-      const cleanPath = envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/+$/, '')}/api`
-      if (typeof window !== 'undefined' && window.location) {
-        if (window.location.hostname && window.location.hostname.includes('onrender.com')) {
-          return RENDER_BACKEND_FALLBACK
+    // Relative path (e.g. "/api") → expand with current origin when available
+    if (raw.startsWith('/')) {
+      if (typeof window !== 'undefined') {
+        const { hostname, origin } = window.location
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          return 'http://localhost:8000/api'
         }
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          return `http://localhost:8000${cleanPath}`
+        if (hostname.includes('onrender.com')) {
+          return RENDER_BACKEND
         }
-        if (window.location.origin && window.location.origin.startsWith('http')) {
-          return `${window.location.origin.replace(/\/+$/, '')}${cleanPath}`
+        if (origin && origin.startsWith('http')) {
+          return origin.replace(/\/+$/, '') + '/api'
         }
       }
-      return `http://localhost:8000${cleanPath}`
-    }
-
-    // 3. Domain without protocol (e.g. "student-management-system-9yuf.onrender.com" or with path)
-    if (envUrl.includes('.')) {
-      // Normalize: remove any protocol if present, trim spaces, remove trailing slashes
-      let candidate = envUrl.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
-      // If someone accidentally set a full path like "domain.com/api", keep only domain+path
-      // Build with https as preferred protocol
-      candidate = `https://${candidate}`
-      try {
-        const parsed = new URL(candidate)
-        const origin = parsed.origin
-        let pathname = parsed.pathname.replace(/\/+$/, '')
-        if (!pathname || pathname === '/') pathname = '/api'
-        else if (!pathname.endsWith('/api')) pathname = `${pathname}/api`
-        return `${origin}${pathname}`
-      } catch (e) {
-        // If parsing fails, log and continue to auto-detection
-        // This prevents the app from throwing a 'Failed to construct URL' error
-        // during runtime when an env var is malformed.
-        // eslint-disable-next-line no-console
-        console.warn('getBaseURL: could not parse env var VITE_API_URL/VITE_API_BASE_URL:', envUrl, e)
-      }
+      return 'http://localhost:8000/api'
     }
   }
 
-  // Auto-detection based on browser location
-  if (typeof window !== 'undefined' && window.location) {
-    const { origin, hostname } = window.location
-
-    if (hostname && hostname.includes('onrender.com')) {
-      return RENDER_BACKEND_FALLBACK
-    }
+  // ── 2. Auto-detect from browser location ──────────────────────────────────
+  if (typeof window !== 'undefined') {
+    const { hostname, origin } = window.location
 
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8000/api'
     }
-
-    if (origin && origin !== 'null' && (origin.startsWith('http://') || origin.startsWith('https://'))) {
-      return `${origin.replace(/\/+$/, '')}/api`
+    if (hostname.includes('onrender.com')) {
+      return RENDER_BACKEND
+    }
+    if (origin && origin.startsWith('http')) {
+      return origin.replace(/\/+$/, '') + '/api'
     }
   }
 
+  // ── 3. Hard fallback ───────────────────────────────────────────────────────
   return 'http://localhost:8000/api'
 }
 
+// ─── Axios instance ───────────────────────────────────────────────────────────
+// DO NOT set baseURL here — we construct absolute URLs in the request interceptor.
+// Setting baseURL to anything other than a valid absolute URL causes Axios to call
+// `new URL(relativeUrl, baseURL)` which throws "Failed to construct 'URL': Invalid URL"
+// when baseURL is empty / relative.
 const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Request interceptor - attach JWT token & construct absolute request URLs cleanly
+// ─── Request interceptor ─────────────────────────────────────────────────────
 api.interceptors.request.use((config) => {
-  const base = getBaseURL()
-
-  if (config.url) {
-    if (!config.url.startsWith('http://') && !config.url.startsWith('https://')) {
-      const cleanBase = base.endsWith('/') ? base : `${base}/`
-      const cleanRelative = config.url.replace(/^\/+/, '')
-      config.url = `${cleanBase}${cleanRelative}`
-    }
+  // Ensure config.url is always an absolute URL before Axios processes it.
+  if (config.url && !config.url.startsWith('http://') && !config.url.startsWith('https://')) {
+    const base = getBaseURL().replace(/\/+$/, '')           // e.g. http://localhost:8000/api
+    const path = config.url.replace(/^\/+/, '')              // strip leading slashes
+    config.url = `${base}/${path}`
   }
 
-  // CRITICAL: Delete config.baseURL so Axios never passes an empty string ('') or relative base to new URL(url, base)
+  // Remove baseURL entirely so Axios never feeds it to `new URL(url, baseURL)`.
   delete config.baseURL
 
+  // Attach JWT bearer token
   const token = localStorage.getItem('access_token')
   if (token) {
+    config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
   }
+
   return config
 })
 
-// Response interceptor - handle auth errors
+// ─── Response interceptor ────────────────────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const isLoginReq = error.config?.url?.includes('/auth/login')
+
     if (error.response?.status === 401 && !isLoginReq) {
       localStorage.removeItem('access_token')
       localStorage.removeItem('user')
@@ -114,13 +103,17 @@ api.interceptors.response.use(
     } else if (error.response?.status === 403) {
       toast.error('Access denied')
     } else if (error.response?.status === 500) {
-      const msg = error.response?.data?.error || error.response?.data?.detail || 'Server internal error (500). Please try again.'
+      const msg =
+        error.response?.data?.error ||
+        error.response?.data?.detail ||
+        'Server internal error (500). Please try again.'
       toast.error(msg)
     }
     return Promise.reject(error)
   }
 )
 
+// ─── API Surface ──────────────────────────────────────────────────────────────
 export const authAPI = {
   login: (data) => api.post('/auth/login', data),
   registerStudent: (data) => api.post('/auth/register/student', data),
@@ -161,9 +154,10 @@ export const assignmentAPI = {
   create: (data) => api.post('/assignments', data),
   update: (id, data) => api.put(`/assignments/${id}`, data),
   delete: (id) => api.delete(`/assignments/${id}`),
-  submit: (id, formData) => api.post(`/assignments/${id}/submit`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  submit: (id, formData) =>
+    api.post(`/assignments/${id}/submit`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   getSubmissions: (id) => api.get(`/assignments/${id}/submissions`),
   gradeSubmission: (id, data) => api.put(`/assignments/submissions/${id}/grade`, data),
 }
@@ -198,9 +192,10 @@ export const analyticsAPI = {
   dashboard: () => api.get('/analytics/dashboard'),
   attendanceTrend: () => api.get('/analytics/attendance-trend'),
   studentAnalytics: (id) => api.get(`/analytics/student/${id}`),
-  // DS endpoints
-  attendanceForecast: (daysAhead = 7) => api.get('/analytics/attendance-forecast', { params: { days_ahead: daysAhead } }),
-  studentClusters: (nClusters = 3) => api.get('/analytics/student-clusters', { params: { n_clusters: nClusters } }),
+  attendanceForecast: (daysAhead = 7) =>
+    api.get('/analytics/attendance-forecast', { params: { days_ahead: daysAhead } }),
+  studentClusters: (nClusters = 3) =>
+    api.get('/analytics/student-clusters', { params: { n_clusters: nClusters } }),
   subjectPerformance: () => api.get('/analytics/subject-performance'),
 }
 
