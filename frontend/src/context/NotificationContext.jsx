@@ -25,17 +25,19 @@ export function NotificationProvider({ children }) {
 
     let socket = null
     if (user?.id && typeof window !== 'undefined' && window.location) {
+      // WebSocket must connect to the BACKEND server, NOT the frontend host.
+      // Vercel is a static site host — it cannot handle WebSocket connections.
+      // Always derive WS URL from the API base URL (which points to Render backend).
       let wsUrl = ''
       try {
         const apiBase = getBaseURL()
-        const parsedApi = new URL(apiBase, window.location.origin)
+        // apiBase is always an absolute http(s):// URL (e.g. https://student-management-system-9yuf.onrender.com/api)
+        const parsedApi = new URL(apiBase)
         const wsProto = parsedApi.protocol === 'https:' ? 'wss:' : 'ws:'
         wsUrl = `${wsProto}//${parsedApi.host}/ws/${user.id}`
       } catch {
-        const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-        const host = isDev ? `${window.location.hostname}:8000` : 'student-management-system-9yuf.onrender.com'
-        wsUrl = `${protocol}//${host}/ws/${user.id}`
+        // Hard fallback: use known Render backend directly
+        wsUrl = `wss://student-management-system-9yuf.onrender.com/ws/${user.id}`
       }
 
       try {
