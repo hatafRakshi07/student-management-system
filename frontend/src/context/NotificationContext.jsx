@@ -28,7 +28,7 @@ export function NotificationProvider({ children }) {
       let wsUrl = ''
       try {
         const apiBase = getBaseURL()
-        const parsedApi = new URL(apiBase)
+        const parsedApi = new URL(apiBase, window.location.origin)
         const wsProto = parsedApi.protocol === 'https:' ? 'wss:' : 'ws:'
         wsUrl = `${wsProto}//${parsedApi.host}/ws/${user.id}`
       } catch {

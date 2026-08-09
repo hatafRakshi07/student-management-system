@@ -20,6 +20,9 @@ export const getBaseURL = () => {
         if (window.location.hostname && window.location.hostname.includes('onrender.com')) {
           return RENDER_BACKEND_FALLBACK
         }
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          return `http://localhost:8000${cleanPath}`
+        }
         if (window.location.origin && window.location.origin.startsWith('http')) {
           return `${window.location.origin.replace(/\/+$/, '')}${cleanPath}`
         }
@@ -53,47 +56,42 @@ export const getBaseURL = () => {
 
   // Auto-detection based on browser location
   if (typeof window !== 'undefined' && window.location) {
-    const { origin, hostname, protocol, port } = window.location
+    const { origin, hostname } = window.location
 
     if (hostname && hostname.includes('onrender.com')) {
       return RENDER_BACKEND_FALLBACK
     }
 
-    if (origin && origin !== 'null' && (origin.startsWith('http://') || origin.startsWith('https://'))) {
-      return `${origin.replace(/\/+$/, '')}/api`
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:8000/api'
     }
 
-    if (hostname && hostname.trim() && hostname !== 'null') {
-      const p = (protocol && protocol.startsWith('http')) ? protocol : 'http:'
-      const pt = port ? `:${port}` : ''
-      return `${p}//${hostname}${pt}/api`
+    if (origin && origin !== 'null' && (origin.startsWith('http://') || origin.startsWith('https://'))) {
+      return `${origin.replace(/\/+$/, '')}/api`
     }
   }
 
   return 'http://localhost:8000/api'
 }
 
-const apiBaseURL = getBaseURL()
-
 const api = axios.create({
-  baseURL: apiBaseURL,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Request interceptor - attach JWT token & convert config.url into a guaranteed absolute URL
+// Request interceptor - attach JWT token & construct absolute request URLs cleanly
 api.interceptors.request.use((config) => {
-  let base = config.baseURL
-  if (!base || (!base.startsWith('http://') && !base.startsWith('https://'))) {
-    base = getBaseURL()
+  const base = getBaseURL()
+
+  if (config.url) {
+    if (!config.url.startsWith('http://') && !config.url.startsWith('https://')) {
+      const cleanBase = base.endsWith('/') ? base : `${base}/`
+      const cleanRelative = config.url.replace(/^\/+/, '')
+      config.url = `${cleanBase}${cleanRelative}`
+    }
   }
 
-  // Pre-combine base and config.url into an absolute URL so Axios new URL(url) never throws on relative bases
-  if (config.url && !config.url.startsWith('http://') && !config.url.startsWith('https://')) {
-    const cleanBase = base.endsWith('/') ? base : `${base}/`
-    const cleanRelative = config.url.replace(/^\/+/, '')
-    config.url = `${cleanBase}${cleanRelative}`
-    config.baseURL = ''
-  }
+  // CRITICAL: Delete config.baseURL so Axios never passes an empty string ('') or relative base to new URL(url, base)
+  delete config.baseURL
 
   const token = localStorage.getItem('access_token')
   if (token) {
