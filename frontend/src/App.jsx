@@ -160,11 +160,21 @@ function AppRoutes() {
   )
 }
 export default function App() {
-  const [splash, setSplash] = useState(true)
+  const [splash, setSplash] = useState(() => {
+    // Only show splash screen once per tab / session
+    try {
+      return !sessionStorage.getItem('aklank_splash_shown')
+    } catch {
+      return false
+    }
+  })
 
-  const handleSplashDone = () => {
+  const handleSplashDone = React.useCallback(() => {
+    try {
+      sessionStorage.setItem('aklank_splash_shown', 'true')
+    } catch {}
     setSplash(false)
-  }
+  }, [])
 
   return (
     <ErrorBoundary>
