@@ -535,6 +535,44 @@ def seed_aklank_staff_data(db: Session = None) -> Dict[str, Any]:
                 sd.last_verified_at = now
                 sd.status = status_enum
 
+            # ── Create TeacherCourseAssignment mapping records ─────────────────
+            dept_name = rec["department_name"]
+            default_courses = []
+            if "Computer" in dept_name:
+                default_courses = ["BCA"]
+            elif "Humanities" in dept_name:
+                default_courses = ["BA"]
+            elif "Home Science" in dept_name:
+                default_courses = ["MA Home Science", "BA"]
+            elif "Drawing" in dept_name:
+                default_courses = ["MA Drawing & Painting", "BA"]
+            elif "Science" in dept_name:
+                if rec["subject"] in ("Zoology", "Botany"):
+                    default_courses = ["B.Sc Biology"]
+                elif rec["subject"] in ("Mathematics", "Physics"):
+                    default_courses = ["B.Sc Maths"]
+                else:
+                    default_courses = ["B.Sc Biology", "B.Sc Maths"]
+
+            for crs in default_courses:
+                for yr in ["1st Year", "2nd Year", "3rd Year"]:
+                    existing_assign = db.query(TeacherCourseAssignment).filter(
+                        TeacherCourseAssignment.teacher_id == user.id,
+                        TeacherCourseAssignment.course_name == crs,
+                        TeacherCourseAssignment.year == yr
+                    ).first()
+                    if not existing_assign:
+                        db.add(TeacherCourseAssignment(
+                            teacher_id=user.id,
+                            department=dept_name,
+                            course_name=crs,
+                            subject_name=rec["subject"],
+                            year=yr,
+                            section="All",
+                            academic_session="2025-26",
+                            status="ACTIVE"
+                        ))
+
         db.commit()
 
         # ── Duplicate & Validation Verification ─────────────────────────────

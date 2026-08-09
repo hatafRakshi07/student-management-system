@@ -136,6 +136,122 @@ def get_validation_report(_=Depends(require_admin), db: Session = Depends(get_db
     return seed_aklank_staff_data(db)
 
 
+@router.get("/my-assignments")
+def get_my_teacher_assignments(current_user: User = Depends(require_teacher_or_admin), db: Session = Depends(get_db)):
+    """Get current logged in teacher's department, courses, subjects, years, and section assignments."""
+    from app.utils.teacher_access import get_teacher_access_filter
+    from app.models.teacher import TeacherCourseAssignment
+
+    access = get_teacher_access_filter(current_user, db)
+    assignments = db.query(TeacherCourseAssignment).filter(
+        TeacherCourseAssignment.teacher_id == current_user.id,
+        TeacherCourseAssignment.status == "ACTIVE"
+    ).all()
+
+    return {
+        "teacher_id": current_user.id,
+        "teacher_name": current_user.full_name,
+        "department": access["department"],
+        "courses": access["courses"],
+        "years": access["years"],
+        "sections": access["sections"],
+        "subjects": access["subjects"],
+        "assignments": [{
+            "id": a.id,
+            "department": a.department,
+            "course_name": a.course_name,
+            "subject_name": a.subject_name,
+            "year": a.year,
+            "semester": a.semester,
+            "section": a.section,
+            "academic_session": a.academic_session
+        } for a in assignments]
+    }
+
+
+@router.get("/{teacher_id}/assignments")
+def get_teacher_assignments_by_id(teacher_id: int, _=Depends(require_teacher_or_admin), db: Session = Depends(get_db)):
+    """Get assignment list for a specific teacher."""
+    from app.models.teacher import TeacherCourseAssignment
+    assignments = db.query(TeacherCourseAssignment).filter(
+        TeacherCourseAssignment.teacher_id == teacher_id,
+        TeacherCourseAssignment.status == "ACTIVE"
+    ).all()
+    return {"teacher_id": teacher_id, "assignments": [{
+        "id": a.id,
+        "department": a.department,
+        "course_name": a.course_name,
+        "subject_name": a.subject_name,
+        "year": a.year,
+        "semester": a.semester,
+        "section": a.section,
+        "academic_session": a.academic_session
+    } for a in assignments]}
+
+
+@router.post("/assignments")
+def create_teacher_course_assignment(data: Dict[str, Any], _=Depends(require_admin), db: Session = Depends(get_db)):
+    """Admin Endpoint: Assign Course, Department, Subject, Years, Semester, Section to a Teacher."""
+    from app.models.teacher import TeacherCourseAssignment, TeacherProfile
+
+    teacher_id = data.get("teacher_id")
+    dept = data.get("department", "Computer Science")
+    course_name = data.get("course_name", "BCA")
+    subject_name = data.get("subject_name")
+    years = data.get("years", ["1st Year", "2nd Year", "3rd Year"])
+    if isinstance(years, str):
+        years = [years]
+    section = data.get("section", "All")
+    session_year = data.get("academic_session", "2025-26")
+
+    teacher = db.query(User).filter(User.id == teacher_id).first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher user record not found")
+
+    tp = db.query(TeacherProfile).filter(TeacherProfile.user_id == teacher_id).first()
+    if tp and not tp.department:
+        tp.department = dept
+
+    added = 0
+    for yr in years:
+        existing = db.query(TeacherCourseAssignment).filter(
+            TeacherCourseAssignment.teacher_id == teacher_id,
+            TeacherCourseAssignment.course_name == course_name,
+            TeacherCourseAssignment.year == yr,
+            TeacherCourseAssignment.status == "ACTIVE"
+        ).first()
+
+        if not existing:
+            assign = TeacherCourseAssignment(
+                teacher_id=teacher_id,
+                department=dept,
+                course_name=course_name,
+                subject_name=subject_name,
+                year=yr,
+                section=section,
+                academic_session=session_year,
+                status="ACTIVE"
+            )
+            db.add(assign)
+            added += 1
+
+    db.commit()
+    return {"message": f"Successfully created {added} course assignments for teacher {teacher.full_name}"}
+
+
+@router.delete("/assignments/{assignment_id}")
+def delete_teacher_assignment(assignment_id: int, _=Depends(require_admin), db: Session = Depends(get_db)):
+    """Admin Endpoint: Remove a teacher course assignment."""
+    from app.models.teacher import TeacherCourseAssignment
+    assign = db.query(TeacherCourseAssignment).filter(TeacherCourseAssignment.id == assignment_id).first()
+    if not assign:
+        raise HTTPException(status_code=404, detail="Assignment record not found")
+
+    db.delete(assign)
+    db.commit()
+    return {"message": "Teacher assignment removed successfully"}
+
+
 @router.get("/profile")
 def teacher_profile(current_user: User = Depends(require_teacher_or_admin), db: Session = Depends(get_db)):
     """Get current logged-in teacher profile."""

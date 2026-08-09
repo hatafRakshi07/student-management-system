@@ -136,11 +136,17 @@ export const teacherAPI = {
   update: (id, data) => api.put(`/teachers/${id}`, data),
   delete: (id) => api.delete(`/teachers/${id}`),
   validationReport: () => api.get('/teachers/validation-report'),
+  myAssignments: () => api.get('/teachers/my-assignments'),
+  getAssignments: (id) => api.get(`/teachers/${id}/assignments`),
+  createAssignment: (data) => api.post('/teachers/assignments', data),
+  deleteAssignment: (id) => api.delete(`/teachers/assignments/${id}`),
 }
 
 export const attendanceAPI = {
   mark: (data) => api.post('/attendance', data),
   markBulk: (data) => api.post('/attendance/bulk', data),
+  submitSession: (data) => api.post('/attendance/session/submit', data),
+  getClassStudents: (params) => api.get('/attendance/class-students', { params }),
   studentAttendance: (id) => api.get(`/attendance/student/${id}`),
   overview: (params) => api.get('/attendance/overview', { params }),
 }

@@ -36,6 +36,16 @@ export default function TeacherManagement() {
   const [selectedStaff, setSelectedStaff] = useState(null)
   const [validationReport, setValidationReport] = useState(null)
 
+  const [assignmentModal, setAssignmentModal] = useState(false)
+  const [teacherAssignments, setTeacherAssignments] = useState([])
+  const [assignmentForm, setAssignmentForm] = useState({
+    department: 'Computer Science',
+    course_name: 'BCA',
+    subject_name: '',
+    years: ['1st Year', '2nd Year', '3rd Year'],
+    section: 'All'
+  })
+
   const [form, setForm] = useState({
     employee_id: '',
     title: 'Mr.',
@@ -127,6 +137,59 @@ export default function TeacherManagement() {
   const openProfileModal = (staff) => {
     setSelectedStaff(staff)
     setProfileModal(true)
+  }
+
+  const openAssignmentModal = async (staff) => {
+    setSelectedStaff(staff)
+    try {
+      const res = await teacherAPI.getAssignments(staff.id)
+      setTeacherAssignments(res.data.assignments || [])
+    } catch {
+      setTeacherAssignments([])
+    }
+
+    const defaultCourse = staff.department === 'Humanities' ? 'BA' :
+      (staff.department === 'Home Science' ? 'MA Home Science' :
+      (staff.department === 'Drawing & Painting' ? 'MA Drawing & Painting' :
+      (staff.department === 'Science' ? 'B.Sc Biology' : 'BCA')))
+
+    setAssignmentForm({
+      department: staff.department || 'Computer Science',
+      course_name: defaultCourse,
+      subject_name: staff.subject || '',
+      years: ['1st Year', '2nd Year', '3rd Year'],
+      section: 'All'
+    })
+    setAssignmentModal(true)
+  }
+
+  const handleCreateAssignment = async () => {
+    if (!selectedStaff?.id) return
+    setLoading(true)
+    try {
+      await teacherAPI.createAssignment({
+        teacher_id: selectedStaff.id,
+        ...assignmentForm
+      })
+      toast.success('Teacher course assignment saved!')
+      const res = await teacherAPI.getAssignments(selectedStaff.id)
+      setTeacherAssignments(res.data.assignments || [])
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to create assignment')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteAssignment = async (assignId) => {
+    try {
+      await teacherAPI.deleteAssignment(assignId)
+      toast.success('Assignment record removed')
+      const res = await teacherAPI.getAssignments(selectedStaff.id)
+      setTeacherAssignments(res.data.assignments || [])
+    } catch {
+      toast.error('Failed to remove assignment')
+    }
   }
 
   const handleSaveCreate = async () => {
@@ -829,6 +892,132 @@ export default function TeacherManagement() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* ── 4. TEACHER COURSE ASSIGNMENTS MODAL ──────────────────────────── */}
+      <Modal open={assignmentModal} onClose={() => setAssignmentModal(false)} title={`Teacher Course Assignments — ${selectedStaff?.full_name || ''}`} size="lg">
+        <div className="space-y-5 text-xs">
+          <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800">
+            <p className="font-bold">Assign Department, Course, Subject & Authorized Years</p>
+            <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-0.5">
+              Teacher will be strictly authorized to view & mark attendance ONLY for students matching these assigned courses and years.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Department *</label>
+              <select
+                className="input"
+                value={assignmentForm.department}
+                onChange={e => setAssignmentForm(p => ({ ...p, department: e.target.value }))}
+              >
+                {departmentsList.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Course Name *</label>
+              <input
+                type="text"
+                className="input"
+                value={assignmentForm.course_name}
+                onChange={e => setAssignmentForm(p => ({ ...p, course_name: e.target.value }))}
+                placeholder="e.g. BCA, BA, B.Sc Biology"
+              />
+            </div>
+
+            <div>
+              <label className="label">Subject Name (Optional)</label>
+              <input
+                type="text"
+                className="input"
+                value={assignmentForm.subject_name}
+                onChange={e => setAssignmentForm(p => ({ ...p, subject_name: e.target.value }))}
+                placeholder="e.g. DBMS, English, Zoology"
+              />
+            </div>
+
+            <div>
+              <label className="label">Section</label>
+              <select
+                className="input"
+                value={assignmentForm.section}
+                onChange={e => setAssignmentForm(p => ({ ...p, section: e.target.value }))}
+              >
+                <option value="All">All Sections</option>
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+                <option value="C">Section C</option>
+              </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="label mb-1">Authorized Years (Select All Applicable)</label>
+              <div className="flex items-center gap-4 pt-1">
+                {['1st Year', '2nd Year', '3rd Year'].map(yr => (
+                  <label key={yr} className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={assignmentForm.years.includes(yr)}
+                      onChange={e => {
+                        const newYrs = e.target.checked
+                          ? [...assignmentForm.years, yr]
+                          : assignmentForm.years.filter(y => y !== yr)
+                        setAssignmentForm(p => ({ ...p, years: newYrs }))
+                      }}
+                      className="rounded text-primary-600 focus:ring-primary-500 h-4 w-4"
+                    />
+                    {yr}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button onClick={handleCreateAssignment} disabled={loading} className="btn-primary text-xs flex items-center gap-1">
+              <Plus className="w-3.5 h-3.5" /> Save Assignment
+            </button>
+          </div>
+
+          <div className="pt-3 border-t">
+            <p className="font-bold text-gray-800 dark:text-gray-200 mb-2">Active Course Assignments:</p>
+            <div className="table-container max-h-[220px]">
+              <table className="table w-full text-left">
+                <thead>
+                  <tr>
+                    <th>Department</th>
+                    <th>Course</th>
+                    <th>Subject</th>
+                    <th>Year</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teacherAssignments.map(a => (
+                    <tr key={a.id}>
+                      <td className="font-semibold">{a.department}</td>
+                      <td><span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 font-bold text-blue-700 dark:text-blue-300">{a.course_name}</span></td>
+                      <td>{a.subject_name || '—'}</td>
+                      <td><span className="font-semibold">{a.year || 'All Years'}</span></td>
+                      <td>
+                        <button onClick={() => handleDeleteAssignment(a.id)} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Remove Assignment">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {!teacherAssignments.length && (
+                    <tr>
+                      <td colSpan={5} className="py-4 text-center text-gray-400">No explicit assignments set yet. Default department rules apply.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </Modal>
     </div>
   )

@@ -20,13 +20,22 @@ def list_students(
     class_name: Optional[str] = None,
     department: Optional[str] = None,
     skip: int = 0, limit: int = 50,
-    _=Depends(require_teacher_or_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in (UserRole.admin, UserRole.teacher):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    from app.utils.teacher_access import filter_student_query_for_teacher
+
     q = (db.query(User, StudentProfile, FeeSummary)
          .join(StudentProfile, User.id == StudentProfile.user_id)
          .outerjoin(FeeSummary, User.id == FeeSummary.student_id)
          .filter(User.role == UserRole.student, User.is_active == True))
+
+    # Apply backend SQL access filter for teachers
+    q = filter_student_query_for_teacher(q, current_user, db)
+
     if search:
         q = q.filter(
             User.full_name.ilike(f"%{search}%") | User.email.ilike(f"%{search}%") |
@@ -194,16 +203,24 @@ def search_students(
     semester: Optional[str] = None,
     session: Optional[str] = None,
     skip: int = 0, limit: int = 50,
-    _=Depends(require_teacher_or_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Step 13: Search student by Name, Scholar Number, Registration Number, Admission Number,
     Father Name, Mother Name, Mobile Number, Class, Semester, Session.
+    Enforces backend teacher access boundaries.
     """
+    if current_user.role not in (UserRole.admin, UserRole.teacher):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     from app.models.student import StudentAcademicHistory
+    from app.utils.teacher_access import filter_student_query_for_teacher
 
     q = db.query(User, StudentProfile, FeeSummary).join(StudentProfile, User.id == StudentProfile.user_id).outerjoin(FeeSummary, User.id == FeeSummary.student_id).filter(User.role == UserRole.student)
+
+    # Apply backend SQL access filter for teachers
+    q = filter_student_query_for_teacher(q, current_user, db)
 
     if query:
         q = q.filter(
