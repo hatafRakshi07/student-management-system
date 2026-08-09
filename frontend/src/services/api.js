@@ -10,7 +10,7 @@ export const getBaseURL = () => {
 
     // 1. Full URL starting with http:// or https://
     if (envUrl.startsWith('http://') || envUrl.startsWith('https://')) {
-      return envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/+$/, '')}/api`
+      return envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/+$|\s+$/g, '')}/api`
     }
 
     // 2. Relative path like "/api" or "/api/"
@@ -27,17 +27,27 @@ export const getBaseURL = () => {
       return `http://localhost:8000${cleanPath}`
     }
 
-    // 3. Domain without protocol (e.g. "student-management-system-9yuf.onrender.com/api")
+    // 3. Domain without protocol (e.g. "student-management-system-9yuf.onrender.com" or with path)
     if (envUrl.includes('.')) {
-      envUrl = `https://${envUrl}`
+      // Normalize: remove any protocol if present, trim spaces, remove trailing slashes
+      let candidate = envUrl.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+      // If someone accidentally set a full path like "domain.com/api", keep only domain+path
+      // Build with https as preferred protocol
+      candidate = `https://${candidate}`
       try {
-        const parsed = new URL(envUrl)
+        const parsed = new URL(candidate)
         const origin = parsed.origin
         let pathname = parsed.pathname.replace(/\/+$/, '')
         if (!pathname || pathname === '/') pathname = '/api'
         else if (!pathname.endsWith('/api')) pathname = `${pathname}/api`
         return `${origin}${pathname}`
-      } catch {}
+      } catch (e) {
+        // If parsing fails, log and continue to auto-detection
+        // This prevents the app from throwing a 'Failed to construct URL' error
+        // during runtime when an env var is malformed.
+        // eslint-disable-next-line no-console
+        console.warn('getBaseURL: could not parse env var VITE_API_URL/VITE_API_BASE_URL:', envUrl, e)
+      }
     }
   }
 
