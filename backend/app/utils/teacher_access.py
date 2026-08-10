@@ -47,15 +47,15 @@ def get_teacher_access_filter(current_user: User, db: Session) -> Dict[str, Any]
     if not courses:
         dept_lower = dept.lower()
         if "computer" in dept_lower or "bca" in dept_lower:
-            courses = ["BCA", "B.C.A.", "B.C.A", "CS-3A"]
+            courses = ["BCA", "B.C.A.", "B.C.A", "B.C.A. Part", "CS-3A"]
         elif "humanities" in dept_lower or "arts" in dept_lower:
             courses = ["BA", "B.A.", "B.A", "Arts"]
         elif "home science" in dept_lower:
-            courses = ["MA Home Science", "B.A. Home Science", "Home Science"]
+            courses = ["MA Home Science", "B.A. Home Science", "Home Science", "M.A."]
         elif "drawing" in dept_lower:
-            courses = ["MA Drawing & Painting", "B.A. Drawing & Painting", "Drawing"]
+            courses = ["MA Drawing & Painting", "B.A. Drawing & Painting", "Drawing", "M.A."]
         elif "science" in dept_lower:
-            courses = ["B.Sc Biology", "B.Sc Maths", "B.Sc", "B.Sc."]
+            courses = ["B.Sc Biology", "B.Sc Maths", "B.Sc", "B.Sc.", "B.SC"]
 
     if not years:
         years = ["1st Year", "2nd Year", "3rd Year", "1", "2", "3"]
@@ -91,7 +91,12 @@ def filter_student_query_for_teacher(query, current_user: User, db: Session):
     # Department keyword fallbacks
     dept_lower = dept.lower()
     if "computer" in dept_lower:
-        dept_filters.extend([StudentProfile.class_name.ilike("%bca%"), StudentProfile.department.ilike("%computer%")])
+        dept_filters.extend([
+            StudentProfile.class_name.ilike("%bca%"),
+            StudentProfile.class_name.ilike("%b.c.a%"),
+            StudentProfile.department.ilike("%computer%"),
+            StudentProfile.department.ilike("%Computer Applications%"),
+        ])
     elif "humanities" in dept_lower or "arts" in dept_lower:
         dept_filters.extend([StudentProfile.class_name.ilike("%b.a%"), StudentProfile.class_name.ilike("%arts%"), StudentProfile.department.ilike("%humanities%")])
     elif "home science" in dept_lower:

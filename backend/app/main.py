@@ -132,11 +132,9 @@ app.include_router(analytics.router)
 app.include_router(messages.router)
 app.include_router(websockets.router)
 app.include_router(import_module.router)
-from app.routers import audit, hr, parents, academic_planner, library, enterprise, expansion, advanced, digital, tenant, hostel, inventory
+from app.routers import audit, hr, academic_planner, library, enterprise, expansion, advanced, digital, tenant, hostel, inventory
 app.include_router(audit.router)
 app.include_router(hr.router)
-app.include_router(parents.router)
-app.include_router(parents.router, prefix="/api/parents", tags=["Parents Plural Alias"])
 app.include_router(academic_planner.router)
 app.include_router(library.router)
 app.include_router(enterprise.router)
@@ -145,7 +143,7 @@ app.include_router(advanced.router)
 app.include_router(digital.router)
 app.include_router(tenant.router)
 app.include_router(hostel.router)
-app.include_router(inventory.router)
+# inventory routes are already registered by expansion.router (/api/inventory/*)
 
 
 

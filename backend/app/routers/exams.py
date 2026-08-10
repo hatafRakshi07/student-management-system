@@ -26,6 +26,23 @@ from app.utils.auth_deps import require_admin, require_teacher_or_admin, get_cur
 router = APIRouter(prefix="/api/exams", tags=["Exams & Results"])
 
 
+# Aliases so frontend GET/POST /exams also work (same as /schedule)
+@router.get("")
+def list_exams_alias(
+    class_name: Optional[str] = None,
+    semester: Optional[int] = None,
+    session_year: Optional[str] = None,
+    _=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return list_exam_schedules(class_name=class_name, semester=semester, session_year=session_year, _=_, db=db)
+
+
+@router.post("")
+def create_exam_alias(payload: Dict[str, Any], _=Depends(require_teacher_or_admin), db: Session = Depends(get_db)):
+    return create_exam_schedule(payload=payload, _=_, db=db)
+
+
 @router.post("/schedule")
 def create_exam_schedule(
     payload: Dict[str, Any],

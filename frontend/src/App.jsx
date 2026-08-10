@@ -8,6 +8,7 @@ import { FullPageLoader } from './components/common/LoadingSpinner'
 import Layout from './components/common/Layout'
 import SplashScreen from './components/common/SplashScreen'
 import ErrorBoundary from './components/common/ErrorBoundary'
+import PWAInstallBanner from './components/common/PWAInstallBanner'
 
 
 import Login from './pages/auth/Login'
@@ -184,6 +185,7 @@ export default function App() {
             <NotificationProvider>
               {splash && <SplashScreen onDone={handleSplashDone} />}
               <AppRoutes />
+              <PWAInstallBanner />
               <Toaster
                 position="top-right"
                 toastOptions={{

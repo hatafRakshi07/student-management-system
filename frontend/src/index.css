@@ -164,3 +164,26 @@
   }
 }
 
+/* ── Mobile / PWA global fixes ─────────────────────────────────────── */
+@layer base {
+  /* Eliminate 300ms tap delay everywhere */
+  a, button, [role="button"], input, select, textarea, label {
+    touch-action: manipulation;
+  }
+
+  /* Prevent text-size adjust on orientation change (iOS) */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Smooth momentum scrolling on iOS for overflow containers */
+  .overflow-y-auto, .overflow-x-auto, main {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent double-tap zoom on interactive elements */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}

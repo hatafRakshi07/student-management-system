@@ -67,16 +67,37 @@ def get_class_students_for_attendance(
     q = filter_student_query_for_teacher(q, current_user, db)
 
     if target_course:
-        q = q.filter(StudentProfile.class_name.ilike(f"%{target_course}%"))
+        tc = target_course.strip()
+        # Build dotted variant: "BCA" → "B.C.A", "BSC" → "B.S.C"
+        tc_nodots = tc.replace(".", "").replace(" ", "").upper()
+        dotted = ".".join(list(tc_nodots)) if len(tc_nodots) <= 6 else tc_nodots
+        q = q.filter(or_(
+            StudentProfile.class_name.ilike(f"%{tc}%"),
+            StudentProfile.class_name.ilike(f"%{dotted}%"),
+        ))
     if year:
         yr_clean = year.replace("st Year", "").replace("nd Year", "").replace("rd Year", "").replace("th Year", "").strip()
-        q = q.filter(
-            or_(
-                StudentProfile.year == (int(yr_clean) if yr_clean.isdigit() else 1),
-                StudentProfile.class_name.ilike(f"%{year}%"),
-                StudentProfile.semester == (int(yr_clean) if yr_clean.isdigit() else 1)
-            )
-        )
+        yr_num = int(yr_clean) if yr_clean.isdigit() else 1
+        # Semester ranges per year: 1st→1-2, 2nd→3-4, 3rd→5-6, 4th→7-8
+        sem_lo = (yr_num - 1) * 2 + 1
+        sem_hi = yr_num * 2
+        ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"]
+        sem_patterns = [
+            f"{ROMAN[s-1]}-SEM" for s in range(sem_lo, sem_hi + 1) if s <= len(ROMAN)
+        ] + [
+            f"SEM-{ROMAN[s-1]}" for s in range(sem_lo, sem_hi + 1) if s <= len(ROMAN)
+        ]
+        # Use PostgreSQL regex for Part-N: "Part-II([^I]|$)" won't match "Part-III"
+        part_roman = ROMAN[yr_num - 1] if yr_num <= len(ROMAN) else str(yr_num)
+        year_clauses = [
+            StudentProfile.year == yr_num,
+            StudentProfile.semester.between(sem_lo, sem_hi),
+            StudentProfile.class_name.ilike(f"%{year}%"),
+            StudentProfile.class_name.op("~*")(f"Part-{part_roman}([^I]|$)"),
+        ]
+        for pat in sem_patterns:
+            year_clauses.append(StudentProfile.class_name.ilike(f"%{pat}%"))
+        q = q.filter(or_(*year_clauses))
     if section and section != "All":
         q = q.filter(StudentProfile.section.ilike(f"%{section}%"))
 
