@@ -30,7 +30,7 @@ class StudentProfile(Base):
     reg_date = Column(Date, nullable=True)
     reg_class = Column(String(100), nullable=True)
     religion = Column(String(50), nullable=True)
-    father_mobile = Column(String(50), nullable=True)
+    father_mobile = Column(String(50), nullable=True, index=True)
     mother_phone = Column(String(50), nullable=True)
     mother_mobile = Column(String(50), nullable=True)
     permanent_address = Column(String(500), nullable=True)
@@ -48,7 +48,7 @@ class StudentProfile(Base):
 
     # Step 9 Database Design requirement fields
     admission_no = Column(String(100), index=True, nullable=True)
-    student_name = Column(String(255), nullable=True)
+    student_name = Column(String(255), nullable=True, index=True)
     mobile = Column(String(50), index=True, nullable=True)
     status = Column(String(50), default="ACTIVE")
     created_at = Column(DateTime, default=datetime.utcnow)

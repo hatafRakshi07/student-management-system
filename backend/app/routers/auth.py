@@ -26,7 +26,7 @@ security = HTTPBearer()
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
-def _user_out(user: User, db: Session) -> dict:
+def _user_out(user: User, db: Session, sp=None, tp=None) -> dict:
     role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
     data = {
         "id": user.id, "email": user.email, "full_name": user.full_name,
@@ -36,7 +36,8 @@ def _user_out(user: User, db: Session) -> dict:
     }
     if (user.role == UserRole.student or role_val == "student"):
         try:
-            sp = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
+            if sp is None:
+                sp = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
             if sp:
                 data.update({
                     "roll_number": getattr(sp, 'roll_number', None),
@@ -52,7 +53,8 @@ def _user_out(user: User, db: Session) -> dict:
             db.rollback()
     if (user.role == UserRole.teacher or role_val == "teacher"):
         try:
-            tp = db.query(TeacherProfile).filter(TeacherProfile.user_id == user.id).first()
+            if tp is None:
+                tp = db.query(TeacherProfile).filter(TeacherProfile.user_id == user.id).first()
             if tp:
                 data.update({
                     "employee_id": getattr(tp, 'employee_id', None),
@@ -68,31 +70,33 @@ def _user_out(user: User, db: Session) -> dict:
 def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
     raw_login = (creds.email or "").strip()
     raw_password = (creds.password or "").strip()
-    
+
     if not raw_login or not raw_password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Please provide your Student Name, Scholar No, Email, and Password")
 
     user = None
     sp = None
+    tp = None
 
-    # 1. Match User table directly by email, username, phone, or exact full_name
+    # Fast path: exact email match (uses index, covers most users)
     try:
-        user = db.query(User).filter(
-            (User.email.ilike(raw_login)) |
-            (User.username.ilike(raw_login)) |
-            (User.phone == raw_login) |
-            (User.full_name.ilike(raw_login))
-        ).first()
+        user = db.query(User).filter(User.email == raw_login.lower()).first()
     except Exception:
         db.rollback()
-        user = db.query(User).filter(
-            (User.email.ilike(raw_login)) |
-            (User.phone == raw_login) |
-            (User.full_name.ilike(raw_login))
-        ).first()
 
-    # 2. If not found in User, search StudentProfile by roll_number, reg_no, admission_no, student_name, mobile
+    # Broader User-table lookup: username, phone, full_name (exact)
+    if not user:
+        try:
+            user = db.query(User).filter(
+                (User.username.ilike(raw_login)) |
+                (User.phone == raw_login) |
+                (User.full_name.ilike(raw_login))
+            ).first()
+        except Exception:
+            db.rollback()
+
+    # StudentProfile lookup: roll_no, reg_no, admission_no, mobile, exact student_name
     if not user:
         try:
             sp = db.query(StudentProfile).filter(
@@ -103,13 +107,12 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
                 (StudentProfile.mobile == raw_login) |
                 (StudentProfile.father_mobile == raw_login)
             ).first()
-
             if sp and sp.user_id:
                 user = db.query(User).filter(User.id == sp.user_id).first()
         except Exception:
             db.rollback()
 
-    # 3. Match TeacherProfile by employee_id
+    # TeacherProfile lookup: employee_id
     if not user:
         try:
             tp = db.query(TeacherProfile).filter(TeacherProfile.employee_id.ilike(raw_login)).first()
@@ -118,9 +121,12 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         except Exception:
             db.rollback()
 
-    # 4. Partial / substring match on full_name or student_name if still not found
+    # Last-resort partial / substring match (slowest — only if nothing else matched)
     if not user:
-        user = db.query(User).filter(User.full_name.ilike(f"%{raw_login}%")).first()
+        try:
+            user = db.query(User).filter(User.full_name.ilike(f"%{raw_login}%")).first()
+        except Exception:
+            db.rollback()
     if not user:
         try:
             sp = db.query(StudentProfile).filter(StudentProfile.student_name.ilike(f"%{raw_login}%")).first()
@@ -133,11 +139,14 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="No student or user found matching that Name, Scholar No, or Email")
 
-    # Load student profile if user was found directly
-    if not sp:
-        sp = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
+    # Load student profile once if not already fetched above
+    if sp is None:
+        try:
+            sp = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
+        except Exception:
+            db.rollback()
 
-    # 4. Password validation (Hash, Phone number match, or demo fallback)
+    # Password validation (bcrypt hash, phone number shortcut, or demo fallback)
     pwd_valid = False
     if user.hashed_password:
         try:
@@ -145,7 +154,6 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         except Exception:
             pwd_valid = False
 
-    # Allow phone number & demo passwords if demo auth is enabled
     if not pwd_valid and getattr(settings, 'enable_demo_auth', True):
         if user.phone and raw_password == user.phone.strip():
             pwd_valid = True
@@ -155,11 +163,11 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
             pwd_valid = True
         elif sp and sp.mother_mobile and raw_password == sp.mother_mobile.strip():
             pwd_valid = True
-        elif raw_password.lower() in [
+        elif raw_password.lower() in {
             "student@123", "student123", "student", "123456", "password",
             "admin@123", "admin123", "admin", "teacher@123", "teacher123", "teacher",
             "parent@123", "parent123", "parent"
-        ]:
+        }:
             pwd_valid = True
 
     if not pwd_valid:
@@ -168,7 +176,7 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
 
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated. Contact administration.")
-    
+
     try:
         user.last_login = datetime.utcnow()
         ip = request.client.host if (request and request.client) else "127.0.0.1"
@@ -184,7 +192,7 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         "access_token": token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "user": _user_out(user, db)
+        "user": _user_out(user, db, sp=sp, tp=tp)
     }
 
 
