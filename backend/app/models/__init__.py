@@ -61,7 +61,7 @@ from app.models.tenant import (
 from app.models.notice import Notice, TargetRole
 from app.models.notification import Notification
 from app.models.timetable import Timetable
-from app.models.leave import Leave, LeaveStatus
+from app.models.leave import Leave, LeaveRequest, LeaveStatus
 from app.models.audit import AuditLog
 from app.models.message import Message
 
@@ -103,7 +103,7 @@ __all__ = [
     "Notice", "TargetRole",
     "Notification",
     "Timetable",
-    "Leave", "LeaveStatus",
+    "Leave", "LeaveRequest", "LeaveStatus",
     "AuditLog",
     "Message",
 ]

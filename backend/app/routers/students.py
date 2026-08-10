@@ -20,13 +20,22 @@ def list_students(
     class_name: Optional[str] = None,
     department: Optional[str] = None,
     skip: int = 0, limit: int = 50,
-    _=Depends(require_teacher_or_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in (UserRole.admin, UserRole.teacher):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    from app.utils.teacher_access import filter_student_query_for_teacher
+
     q = (db.query(User, StudentProfile, FeeSummary)
          .join(StudentProfile, User.id == StudentProfile.user_id)
          .outerjoin(FeeSummary, User.id == FeeSummary.student_id)
          .filter(User.role == UserRole.student, User.is_active == True))
+
+    # Apply backend SQL access filter for teachers
+    q = filter_student_query_for_teacher(q, current_user, db)
+
     if search:
         q = q.filter(
             User.full_name.ilike(f"%{search}%") | User.email.ilike(f"%{search}%") |
@@ -38,15 +47,33 @@ def list_students(
     total = q.count()
     results = q.offset(skip).limit(limit).all()
     return {"total": total, "students": [
-        {"id": u.id, "email": u.email, "full_name": u.full_name,
-         "phone": u.phone, "profile_photo": u.profile_photo,
-         "roll_number": sp.roll_number, "department": sp.department,
-         "class_name": sp.class_name, "section": sp.section,
-         "semester": sp.semester, "year": sp.year, "created_at": u.created_at,
-         "total_fee": fs.total_fee if fs else 0.0,
-         "total_paid": fs.total_paid if fs else 0.0,
-         "pending_fee": fs.pending_fee if fs else 0.0,
-         "fee_status": fs.current_status if fs else "UNPAID"}
+        {
+            "id": u.id,
+            "email": u.email,
+            "full_name": u.full_name,
+            "student_name": u.full_name or (sp.student_name if sp else None),
+            "phone": u.phone,
+            "mobile": u.phone or (sp.mobile if sp else None) or (sp.father_mobile if sp else None),
+            "profile_photo": u.profile_photo,
+            "roll_number": sp.roll_number if sp else None,
+            "scholar_no": sp.roll_number if sp else None,
+            "reg_no": (sp.reg_no if sp else None) or (sp.roll_number if sp else None),
+            "admission_no": sp.admission_no if sp else None,
+            "father_name": sp.father_name if sp else None,
+            "mother_name": sp.mother_name if sp else None,
+            "category": sp.category if sp else None,
+            "status": (sp.status if sp else None) or ("ACTIVE" if u.is_active else "INACTIVE"),
+            "department": sp.department if sp else None,
+            "class_name": sp.class_name if sp else None,
+            "section": sp.section if sp else None,
+            "semester": sp.semester if sp else None,
+            "year": sp.year if sp else None,
+            "created_at": u.created_at,
+            "total_fee": fs.total_fee if fs else 0.0,
+            "total_paid": fs.total_paid if fs else 0.0,
+            "pending_fee": fs.pending_fee if fs else 0.0,
+            "fee_status": fs.current_status if fs else "UNPAID"
+        }
         for u, sp, fs in results]}
 
 
@@ -115,51 +142,37 @@ def my_assignments(current_user: User = Depends(require_student), db: Session = 
 
 @router.get("/fees")
 def my_fees(current_user: User = Depends(require_student), db: Session = Depends(get_db)):
-    from app.models.fee import FeeReceipt, FeeSummary, FeeTransaction
+    from app.routers.fees import build_student_fee_history
 
-    summary = db.query(FeeSummary).filter(FeeSummary.student_id == current_user.id).first()
-    receipts = db.query(FeeReceipt).filter(FeeReceipt.student_id == current_user.id).order_by(FeeReceipt.receipt_id.desc()).all()
-    txs = db.query(FeeTransaction).filter(FeeTransaction.student_id == current_user.id).order_by(FeeTransaction.id.desc()).all()
+    hist = build_student_fee_history(current_user.id, db)
+    summary = hist["overall_summary"]
 
-    total_amt = summary.total_fee if summary else (sum(r.amount for r in receipts) or sum(t.paid_amount for t in txs) or 45000.0)
-    paid_amt = summary.total_paid if summary else (sum(r.amount for r in receipts) or sum(t.paid_amount for t in txs) or 0.0)
-    pending_amt = summary.pending_fee if summary else max(0.0, total_amt - paid_amt)
-
-    fee_list = []
-    seen_ids = set()
-
-    for r in receipts:
-        fee_list.append({
-            "id": r.receipt_id,
-            "amount": r.amount,
-            "fee_type": f"Fee Receipt #{r.receipt_no or r.receipt_id}",
-            "description": f"Session {r.session or ''} - Mode: {r.payment_mode or 'CASH'}",
-            "due_date": r.receipt_date or r.created_at,
-            "payment_date": r.receipt_date or r.created_at,
-            "status": "paid",
-            "transaction_id": r.transaction_id or r.voucher_no
-        })
-        seen_ids.add(r.receipt_id)
-
-    for t in txs:
-        if t.id not in seen_ids:
-            fee_list.append({
-                "id": t.id + 500000,
-                "amount": t.paid_amount,
-                "fee_type": f"Fee Installment ({t.installment or '2023-24'})",
-                "description": f"Class {t.class_name or ''} - Bank / Cash Deposit",
-                "due_date": t.created_at,
-                "payment_date": t.created_at,
+    flat_fees = []
+    for ay in hist.get("academic_years", []):
+        for inst in ay.get("installments", []):
+            flat_fees.append({
+                "id": inst["receipt_id"],
+                "amount": inst["amount"],
+                "fee_type": f"{ay['year_title']} - Receipt #{inst['receipt_no']}",
+                "description": f"Class: {ay['class_name']} | Mode: {inst['payment_mode']}",
+                "due_date": inst["payment_date"],
+                "payment_date": inst["payment_date"],
                 "status": "paid",
-                "transaction_id": t.reg_no or f"TX-{t.id}"
+                "transaction_id": inst["voucher_no"]
             })
 
     return {
-        "total_amount": total_amt,
-        "paid_amount": paid_amt,
-        "pending_amount": pending_amt,
-        "fees": fee_list
+        "total_amount": summary["total_fee"],
+        "paid_amount": summary["total_paid"],
+        "pending_amount": summary["total_pending"],
+        "discount_amount": summary["total_discount"],
+        "payment_progress": summary["payment_progress"],
+        "status": summary["status"],
+        "fees": flat_fees,
+        "academic_years": hist.get("academic_years", []),
+        "student_profile": hist.get("student", {})
     }
+
 
 
 @router.get("/search")
@@ -176,16 +189,24 @@ def search_students(
     semester: Optional[str] = None,
     session: Optional[str] = None,
     skip: int = 0, limit: int = 50,
-    _=Depends(require_teacher_or_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Step 13: Search student by Name, Scholar Number, Registration Number, Admission Number,
     Father Name, Mother Name, Mobile Number, Class, Semester, Session.
+    Enforces backend teacher access boundaries.
     """
+    if current_user.role not in (UserRole.admin, UserRole.teacher):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     from app.models.student import StudentAcademicHistory
+    from app.utils.teacher_access import filter_student_query_for_teacher
 
     q = db.query(User, StudentProfile, FeeSummary).join(StudentProfile, User.id == StudentProfile.user_id).outerjoin(FeeSummary, User.id == FeeSummary.student_id).filter(User.role == UserRole.student)
+
+    # Apply backend SQL access filter for teachers
+    q = filter_student_query_for_teacher(q, current_user, db)
 
     if query:
         q = q.filter(

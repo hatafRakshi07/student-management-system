@@ -35,9 +35,31 @@ export default function Login() {
       navigate(routes[user.role] || '/')
       toast.success(`Welcome back, ${user.full_name}!`)
     } catch (err) {
-      const detail = err.response?.data?.detail || err.response?.data?.error || err.message
-      const msg = typeof detail === 'string' ? detail : (detail?.message || detail?.error || (Array.isArray(detail) ? detail.map(d => d.msg || d.message).join(', ') : 'Login failed'))
-      toast.error(msg)
+      console.error('Login error:', err)
+      // Safely extract a plain string message — never pass objects to toast
+      const detail = err.response?.data?.detail
+      const errorData = err.response?.data?.error
+      let msg
+      if (typeof detail === 'string') {
+        msg = detail
+      } else if (detail && typeof detail === 'object') {
+        msg = detail.message || detail.msg || detail.error || JSON.stringify(detail)
+      } else if (typeof errorData === 'string') {
+        msg = errorData
+      } else if (errorData && typeof errorData === 'object') {
+        msg = errorData.message || errorData.msg || JSON.stringify(errorData)
+      } else if (Array.isArray(detail)) {
+        msg = detail.map(d => d.msg || d.message || String(d)).join(', ')
+      } else if (typeof err.message === 'string') {
+        msg = err.message
+      } else {
+        msg = 'Login failed. Please try again.'
+      }
+      // Replace Axios internal URL errors with a friendly message
+      if (!msg || msg.includes('Invalid URL') || msg.includes('Failed to construct') || msg.includes('Network Error')) {
+        msg = 'Unable to connect to server. Please check your connection and try again.'
+      }
+      toast.error(String(msg))
     } finally {
       setLoading(false)
     }

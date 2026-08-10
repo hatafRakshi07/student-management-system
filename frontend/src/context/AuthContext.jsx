@@ -21,8 +21,18 @@ export function AuthProvider({ children }) {
         localStorage.setItem('user', JSON.stringify(res.data))
       })
       .catch(() => {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('user')
+        const localUser = localStorage.getItem('user')
+        if (localUser) {
+          try {
+            setUser(JSON.parse(localUser))
+          } catch {
+            localStorage.removeItem('access_token')
+            localStorage.removeItem('user')
+          }
+        } else {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('user')
+        }
       })
       .finally(() => setLoading(false))
   }, [])

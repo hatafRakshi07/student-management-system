@@ -190,13 +190,79 @@ w("src/index.css", '''@tailwind base;
 w("src/services/api.js", '''import axios from 'axios'
 import toast from 'react-hot-toast'
 
+const getBaseURL = () => {
+  const rawEnv = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''
+
+  if (typeof rawEnv === 'string' && rawEnv.trim() && rawEnv !== 'undefined' && rawEnv !== 'null') {
+    let envUrl = rawEnv.trim()
+
+    if (envUrl.startsWith('/')) {
+      const cleanPath = envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/+$/, '')}/api`
+      if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
+        return `${window.location.origin.replace(/\/+$/, '')}${cleanPath}`
+      }
+      return `http://localhost:8000${cleanPath}`
+    }
+
+    if (!envUrl.startsWith('http://') && !envUrl.startsWith('https://')) {
+      envUrl = `https://${envUrl}`
+    }
+
+    try {
+      const parsed = new URL(envUrl)
+      const origin = parsed.origin
+      let pathname = parsed.pathname.replace(/\/+$/, '')
+      if (!pathname || pathname === '/') {
+        pathname = '/api'
+      } else if (!pathname.endsWith('/api')) {
+        pathname = `${pathname}/api`
+      }
+      return `${origin}${pathname}`
+    } catch {}
+  }
+
+  if (typeof window !== 'undefined' && window.location) {
+    const { origin, hostname, protocol, port } = window.location
+
+    if (hostname && hostname.includes('onrender.com')) {
+      return 'https://student-management-system-9yuf.onrender.com/api'
+    }
+
+    if (origin && origin !== 'null' && (origin.startsWith('http://') || origin.startsWith('https://'))) {
+      return `${origin.replace(/\/+$/, '')}/api`
+    }
+
+    if (hostname && hostname.trim() && hostname !== 'null') {
+      const p = (protocol && protocol.startsWith('http')) ? protocol : 'http:'
+      const pt = port ? `:${port}` : ''
+      return `${p}//${hostname}${pt}/api`
+    }
+  }
+
+  return 'http://localhost:8000/api'
+}
+
+const apiBaseURL = getBaseURL()
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: apiBaseURL,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Request interceptor - attach JWT token
+// Request interceptor - attach JWT token & convert config.url into a guaranteed absolute URL
 api.interceptors.request.use((config) => {
+  let base = config.baseURL
+  if (!base || (!base.startsWith('http://') && !base.startsWith('https://'))) {
+    base = getBaseURL()
+  }
+
+  if (config.url && !config.url.startsWith('http://') && !config.url.startsWith('https://')) {
+    const cleanBase = base.endsWith('/') ? base : `${base}/`
+    const cleanRelative = config.url.replace(/^\/+/, '')
+    config.url = `${cleanBase}${cleanRelative}`
+    config.baseURL = ''
+  }
+
   const token = localStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`

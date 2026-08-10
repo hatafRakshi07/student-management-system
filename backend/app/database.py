@@ -62,9 +62,8 @@ def _init_engine():
             print("Successfully connected to PostgreSQL database.")
             return eng
         except Exception as exc:
-            print(f"PostgreSQL connection notice ({exc}). Initializing serverless database...")
-            if not is_vercel:
-                return eng
+            print(f"PostgreSQL connection notice ({exc}). Initializing SQLite fallback database...")
+
 
     # On Vercel or local fallback: initialize clean database in /tmp
     db_path = "/tmp/student_management_prod.db" if is_vercel else "./student_management.db"
@@ -88,11 +87,24 @@ def _init_engine():
         except Exception:
             pass
 
+
+    # Safe column migration for SQLite fallback
+    try:
+        with sqlite_eng.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+                conn.commit()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     return sqlite_eng
 
 
 engine = _init_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 
 def check_connection() -> bool:
@@ -131,6 +143,12 @@ def create_tables():
         print("Mapper notice:", map_err)
     
     try:
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(100)"))
+                conn.commit()
+            except Exception:
+                pass
         Base.metadata.create_all(bind=engine)
         print("Database schema verified.")
         _tables_initialized = True
@@ -138,6 +156,8 @@ def create_tables():
         try:
             from app.seed import seed_database
             seed_database()
+            from app.seed_aklank_staff import seed_aklank_staff_data
+            seed_aklank_staff_data()
         except Exception as seed_err:
             print("Seed notice:", seed_err)
     except Exception as err:

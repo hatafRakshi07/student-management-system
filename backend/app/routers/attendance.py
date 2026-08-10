@@ -29,6 +29,103 @@ from app.utils.auth_deps import require_admin, require_teacher_or_admin, get_cur
 router = APIRouter(prefix="/api/attendance", tags=["Attendance"])
 
 
+@router.get("/class-students")
+def get_class_students_for_attendance(
+    class_name: Optional[str] = None,
+    course: Optional[str] = None,
+    year: Optional[str] = None,
+    section: Optional[str] = None,
+    session_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Teacher Attendance Marking Loader.
+    Automatically resolves logged-in teacher's department and authorized courses/years.
+    Enforces backend department & course access boundaries.
+    """
+    if current_user.role not in (UserRole.admin, UserRole.teacher):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    from app.utils.teacher_access import get_teacher_access_filter, filter_student_query_for_teacher
+
+    access = get_teacher_access_filter(current_user, db)
+    target_course = course or class_name
+
+    # If teacher requests unauthorized course outside department, return 403
+    if not access["is_admin"] and target_course and access["courses"]:
+        matched = any(c.lower() in target_course.lower() or target_course.lower() in c.lower() for c in access["courses"])
+        if not matched:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Access Denied: Teacher {current_user.full_name} is only authorized for department '{access['department']}' courses {access['courses']}."
+            )
+
+    q = db.query(User, StudentProfile).join(StudentProfile, User.id == StudentProfile.user_id).filter(User.role == UserRole.student, User.is_active == True)
+    
+    # Filter by teacher's department & courses
+    q = filter_student_query_for_teacher(q, current_user, db)
+
+    if target_course:
+        q = q.filter(StudentProfile.class_name.ilike(f"%{target_course}%"))
+    if year:
+        yr_clean = year.replace("st Year", "").replace("nd Year", "").replace("rd Year", "").replace("th Year", "").strip()
+        q = q.filter(
+            or_(
+                StudentProfile.year == (int(yr_clean) if yr_clean.isdigit() else 1),
+                StudentProfile.class_name.ilike(f"%{year}%"),
+                StudentProfile.semester == (int(yr_clean) if yr_clean.isdigit() else 1)
+            )
+        )
+    if section and section != "All":
+        q = q.filter(StudentProfile.section.ilike(f"%{section}%"))
+
+    students_raw = q.order_by(StudentProfile.roll_number.asc()).all()
+
+    q_date = date.today()
+    if session_date:
+        try:
+            q_date = datetime.strptime(session_date, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
+    already_marked = False
+    student_list = []
+    for u, sp in students_raw:
+        existing = db.query(StudentAttendanceRecord).filter(
+            StudentAttendanceRecord.student_id == u.id,
+            StudentAttendanceRecord.date == q_date
+        ).first()
+
+        if existing:
+            already_marked = True
+
+        st_val = existing.status.value if existing and hasattr(existing.status, "value") else (str(existing.status) if existing else "PRESENT")
+
+        student_list.append({
+            "student_id": u.id,
+            "id": u.id,
+            "full_name": u.full_name or sp.student_name,
+            "student_name": u.full_name or sp.student_name,
+            "enrollment_no": sp.reg_no or sp.roll_number or f"ENR-{u.id}",
+            "roll_number": sp.roll_number or f"CS-{u.id:03d}",
+            "class_name": sp.class_name,
+            "department": sp.department,
+            "section": sp.section or "A",
+            "status": st_val
+        })
+
+    return {
+        "teacher_name": current_user.full_name,
+        "department": access["department"] or "Computer Science",
+        "authorized_courses": access["courses"],
+        "authorized_years": access["years"],
+        "already_marked": already_marked,
+        "total_students": len(student_list),
+        "students": student_list
+    }
+
+
 @router.post("/session/submit")
 def submit_attendance_session(
     payload: Dict[str, Any],
@@ -81,8 +178,16 @@ def submit_attendance_session(
     submitted_count = 0
     updated_count = 0
 
+    from app.utils.teacher_access import verify_teacher_can_access_student
+
     for item in student_records:
         std_id = item.get("student_id")
+        if not std_id:
+            continue
+
+        # Enforce backend access authorization
+        verify_teacher_can_access_student(current_user, std_id, db)
+
         st_val = item.get("status", "PRESENT").upper()
         remark = item.get("remarks")
 

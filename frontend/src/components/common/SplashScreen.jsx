@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from 'react'
 
-const SHOW_MS = 2500   // visible duration
-const FADE_MS = 500    // fade-out duration
+const SHOW_MS = 1800   // visible duration
+const FADE_MS = 350    // fade-out duration
 
 export default function SplashScreen({ onDone }) {
   const [hiding, setHiding] = useState(false)
 
   useEffect(() => {
     const t1 = setTimeout(() => setHiding(true), SHOW_MS)
-    const t2 = setTimeout(() => onDone(), SHOW_MS + FADE_MS)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [onDone])
+    const t2 = setTimeout(() => {
+      if (onDone) onDone()
+    }, SHOW_MS + FADE_MS)
+
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+  }, []) // Empty dependency array ensures timer runs exactly ONCE on initial mount
 
   return (
     <div

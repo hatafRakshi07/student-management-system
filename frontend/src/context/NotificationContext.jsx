@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { notificationAPI } from '../services/api'
+import { notificationAPI, getBaseURL } from '../services/api'
 import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
 
@@ -24,10 +24,21 @@ export function NotificationProvider({ children }) {
     const interval = setInterval(fetchNotifications, 60000)
 
     let socket = null
-    if (user?.id) {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const host = window.location.hostname === 'localhost' ? 'localhost:8000' : window.location.host
-      const wsUrl = `${protocol}//${host}/ws/${user.id}`
+    if (user?.id && typeof window !== 'undefined' && window.location) {
+      // WebSocket must connect to the BACKEND server, NOT the frontend host.
+      // Vercel is a static site host — it cannot handle WebSocket connections.
+      // Always derive WS URL from the API base URL (which points to Render backend).
+      let wsUrl = ''
+      try {
+        const apiBase = getBaseURL()
+        // apiBase is always an absolute http(s):// URL (e.g. https://student-management-system-9yuf.onrender.com/api)
+        const parsedApi = new URL(apiBase)
+        const wsProto = parsedApi.protocol === 'https:' ? 'wss:' : 'ws:'
+        wsUrl = `${wsProto}//${parsedApi.host}/ws/${user.id}`
+      } catch {
+        // Hard fallback: use known Render backend directly
+        wsUrl = `wss://student-management-system-9yuf.onrender.com/ws/${user.id}`
+      }
 
       try {
         socket = new WebSocket(wsUrl)

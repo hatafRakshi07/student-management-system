@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.student import StudentProfile
 from app.models.teacher import TeacherProfile
+from app.models.parent import ParentProfile
 from app.models.audit import AuditLog
 from app.schemas.user import (
     StudentRegister, TeacherRegister, AdminRegister,
@@ -26,7 +27,7 @@ security = HTTPBearer()
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
-def _user_out(user: User, db: Session, sp=None, tp=None) -> dict:
+def _user_out(user: User, db: Session, sp=None, tp=None, pp=None) -> dict:
     role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
     data = {
         "id": user.id, "email": user.email, "full_name": user.full_name,
@@ -62,6 +63,20 @@ def _user_out(user: User, db: Session, sp=None, tp=None) -> dict:
                 })
         except Exception:
             db.rollback()
+    if (user.role == UserRole.parent or role_val == "parent"):
+        try:
+            if pp is None:
+                pp = db.query(ParentProfile).filter(ParentProfile.user_id == user.id).first()
+            if pp:
+                data.update({
+                    "father_name": getattr(pp, 'father_name', None),
+                    "mother_name": getattr(pp, 'mother_name', None),
+                    "guardian_name": getattr(pp, 'guardian_name', None),
+                    "mobile": getattr(pp, 'mobile', None),
+                    "address": getattr(pp, 'address', None),
+                })
+        except Exception:
+            db.rollback()
     return data
 
 
@@ -73,11 +88,12 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
 
     if not raw_login or not raw_password:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Please provide your Student Name, Scholar No, Email, and Password")
+                            detail="Please provide your Student/User Name, Roll/Scholar No, Email, and Password")
 
     user = None
     sp = None
     tp = None
+    pp = None
 
     # Fast path: exact email match (uses index, covers most users)
     try:
@@ -121,6 +137,21 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         except Exception:
             db.rollback()
 
+    # ParentProfile lookup: mobile, alt_mobile, email, father_name, mother_name
+    if not user:
+        try:
+            pp = db.query(ParentProfile).filter(
+                (ParentProfile.mobile == raw_login) |
+                (ParentProfile.alt_mobile == raw_login) |
+                (ParentProfile.email.ilike(raw_login)) |
+                (ParentProfile.father_name.ilike(raw_login)) |
+                (ParentProfile.mother_name.ilike(raw_login))
+            ).first()
+            if pp and pp.user_id:
+                user = db.query(User).filter(User.id == pp.user_id).first()
+        except Exception:
+            db.rollback()
+
     # Last-resort partial / substring match (slowest — only if nothing else matched)
     if not user:
         try:
@@ -137,12 +168,22 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="No student or user found matching that Name, Scholar No, or Email")
+                            detail="No user or account found matching that Name, Roll No, Phone, or Email")
 
-    # Load student profile once if not already fetched above
+    # Load profiles once if not already fetched above
     if sp is None:
         try:
             sp = db.query(StudentProfile).filter(StudentProfile.user_id == user.id).first()
+        except Exception:
+            db.rollback()
+    if tp is None:
+        try:
+            tp = db.query(TeacherProfile).filter(TeacherProfile.user_id == user.id).first()
+        except Exception:
+            db.rollback()
+    if pp is None:
+        try:
+            pp = db.query(ParentProfile).filter(ParentProfile.user_id == user.id).first()
         except Exception:
             db.rollback()
 
@@ -162,6 +203,10 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         elif sp and sp.father_mobile and raw_password == sp.father_mobile.strip():
             pwd_valid = True
         elif sp and sp.mother_mobile and raw_password == sp.mother_mobile.strip():
+            pwd_valid = True
+        elif pp and pp.mobile and raw_password == pp.mobile.strip():
+            pwd_valid = True
+        elif pp and pp.alt_mobile and raw_password == pp.alt_mobile.strip():
             pwd_valid = True
         elif raw_password.lower() in {
             "student@123", "student123", "student", "123456", "password",
@@ -192,7 +237,7 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         "access_token": token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "user": _user_out(user, db, sp=sp, tp=tp)
+        "user": _user_out(user, db, sp=sp, tp=tp, pp=pp)
     }
 
 

@@ -66,10 +66,7 @@ export default function FeeManagement() {
 
   const openReceipt = async (receiptId) => {
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.get(`/api/fees/receipt/${receiptId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await feeAPI.getReceipt(receiptId)
       setSelectedReceipt(res.data)
       setReceiptModalOpen(true)
     } catch {

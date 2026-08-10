@@ -149,29 +149,35 @@ export default function StudentManagement() {
               </tr>
             </thead>
             <tbody>
-              {students.map(s => (
-                <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer" onClick={() => openStudentDetail(s)}>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center text-sm font-bold text-primary-700 dark:text-primary-300 flex-shrink-0">
-                        {(s.student_name || 'S').charAt(0)}
+              {students.map(s => {
+                const name = s.student_name || s.full_name || 'Student'
+                const scholarReg = s.scholar_no || s.reg_no || s.roll_number || s.admission_no || '—'
+                const father = s.father_name || '—'
+                const mobile = s.mobile || s.phone || '—'
+
+                return (
+                  <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer" onClick={() => openStudentDetail(s)}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center text-sm font-bold text-primary-700 dark:text-primary-300 flex-shrink-0">
+                          {name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm">{name}</p>
+                          <p className="text-xs text-gray-400">{s.category || 'General'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-gray-900 dark:text-white text-sm">{s.student_name}</p>
-                        <p className="text-xs text-gray-400">{s.category || 'General'}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <p className="font-semibold text-gray-900 dark:text-white text-xs">{s.scholar_no || s.reg_no || '—'}</p>
-                    {s.reg_no && <p className="text-[11px] text-gray-400">{s.reg_no}</p>}
-                  </td>
-                  <td className="text-gray-700 dark:text-gray-300 text-sm font-medium">{s.father_name || '—'}</td>
-                  <td>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{s.class_name || '—'}</p>
-                    <p className="text-xs text-gray-400">{s.department}</p>
-                  </td>
-                  <td className="text-sm font-medium text-gray-600 dark:text-gray-300">{s.mobile || '—'}</td>
+                    </td>
+                    <td>
+                      <p className="font-semibold text-gray-900 dark:text-white text-xs">{scholarReg}</p>
+                      {s.reg_no && s.reg_no !== scholarReg && <p className="text-[11px] text-gray-400">{s.reg_no}</p>}
+                    </td>
+                    <td className="text-gray-700 dark:text-gray-300 text-sm font-medium">{father}</td>
+                    <td>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{s.class_name || '—'}</p>
+                      <p className="text-xs text-gray-400">{s.department}</p>
+                    </td>
+                    <td className="text-sm font-medium text-gray-600 dark:text-gray-300">{mobile}</td>
                   <td>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                       s.pending_fee <= 0
@@ -192,7 +198,8 @@ export default function StudentManagement() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )
+            })}
               {!students.length && !loading && (
                 <tr>
                   <td colSpan={7} className="py-12 text-center">
@@ -261,24 +268,22 @@ export default function StudentManagement() {
               <div className="card p-4 space-y-3 bg-gray-50/50 dark:bg-gray-800/40 border border-gray-200/60 dark:border-gray-700/60">
                 <h3 className="font-bold text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 pb-2">Fee Ledger & Login Credentials</h3>
                 <div className="text-xs space-y-2 text-gray-700 dark:text-gray-300">
-                  <p><span className="font-semibold text-gray-500">Total Fee:</span> ₹{selectedStudent.total_fee || 0}</p>
-                  <p><span className="font-semibold text-gray-500">Total Paid:</span> <span className="text-emerald-600 font-bold">₹{selectedStudent.total_paid || 0}</span></p>
-                  <p><span className="font-semibold text-gray-500">Pending Balance:</span> <span className="text-amber-600 font-bold">₹{selectedStudent.pending_fee || 0}</span></p>
+                  <p><span className="font-semibold text-gray-500">Total Fee:</span> ₹{selectedStudent.total_fee?.toLocaleString() || 0}</p>
+                  <p><span className="font-semibold text-gray-500">Total Paid:</span> <span className="text-emerald-600 font-bold">₹{selectedStudent.total_paid?.toLocaleString() || 0}</span></p>
+                  <p><span className="font-semibold text-gray-500">Pending Balance:</span> <span className="text-rose-600 font-bold">₹{selectedStudent.pending_fee?.toLocaleString() || 0}</span></p>
                   <p className="pt-2 border-t border-gray-200 dark:border-gray-700"><span className="font-semibold text-gray-500">Student Username:</span> <span className="font-mono text-primary-600 dark:text-primary-400 font-bold">{selectedStudent.student_name?.toLowerCase().replace(/[^a-z0-9]/g, '')}</span></p>
-                  <p><span className="font-semibold text-gray-500">Student Password:</span> <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded font-bold text-gray-900 dark:text-white">{selectedStudent.mobile || selectedStudent.scholar_no}</span></p>
+                  <p><span className="font-semibold text-gray-500">Default Password:</span> <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded font-bold text-gray-900 dark:text-white">{selectedStudent.mobile || selectedStudent.scholar_no || 'student123'}</span></p>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setDetailModal(false)} className="btn-secondary text-xs">Close</button>
-              <button onClick={() => toast.success(`Receipt printed for ${selectedStudent.student_name}`)} className="btn-primary text-xs flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5" /> Print Fee Receipt
-              </button>
             </div>
           </div>
         </Modal>
       )}
+
 
       {/* Add Student Modal */}
       <Modal open={modal} onClose={() => setModal(false)} title="Add New Student" size="lg">
