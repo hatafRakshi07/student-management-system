@@ -20,6 +20,17 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [warming, setWarming] = useState(false)
+
+  // Wake up Render backend on first load (free tier sleeps after 15 min)
+  useEffect(() => {
+    const warmedKey = 'backend_warmed'
+    if (sessionStorage.getItem(warmedKey)) return
+    setWarming(true)
+    fetch('/api/auth/ping', { method: 'GET', signal: AbortSignal.timeout(60000) })
+      .catch(() => {})
+      .finally(() => { setWarming(false); sessionStorage.setItem(warmedKey, '1') })
+  }, [])
 
   const validate = () => {
     if (!form.email.trim() || !form.password) return 'Please fill all fields'
@@ -207,8 +218,8 @@ export default function Login() {
               </Link>
             </div>
 
-            <button type="submit" disabled={loading} className="w-full py-3 bg-gradient-to-r from-primary-700 to-primary-800 hover:from-primary-800 hover:to-primary-900 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition duration-150 flex items-center justify-center gap-2 text-sm disabled:opacity-50">
-              {loading ? <LoadingSpinner size="sm" /> : 'Sign In to Portal'}
+            <button type="submit" disabled={loading || warming} className="w-full py-3 bg-gradient-to-r from-primary-700 to-primary-800 hover:from-primary-800 hover:to-primary-900 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition duration-150 flex items-center justify-center gap-2 text-sm disabled:opacity-50">
+              {warming ? 'Connecting to server…' : loading ? <LoadingSpinner size="sm" /> : 'Sign In to Portal'}
             </button>
           </form>
 

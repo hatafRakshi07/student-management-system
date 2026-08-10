@@ -27,6 +27,12 @@ security = HTTPBearer()
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
+@router.get("/ping")
+def ping():
+    """Lightweight keepalive — wakes Render free-tier from sleep."""
+    return {"status": "ok"}
+
+
 def _user_out(user: User, db: Session, sp=None, tp=None, pp=None) -> dict:
     role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
     data = {

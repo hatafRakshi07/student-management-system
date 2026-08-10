@@ -75,7 +75,11 @@ ALLOWED_ORIGINS = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"https://.*\.(vercel\.app|onrender\.com)",
+    allow_origin_regex=(
+        r"https://.*\.(vercel\.app|onrender\.com)"
+        r"|http://(localhost|127\.0\.0\.1)(:\d+)?"
+        r"|http://(192\.168|10\.\d+|172\.(1[6-9]|2\d|3[01]))\.\d+\.\d+(:\d+)?"
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

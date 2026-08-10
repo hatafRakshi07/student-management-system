@@ -27,14 +27,15 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        navigateFallback: '/offline.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/verify\//],
+        // SPA: serve index.html for all navigation (Vercel rewrite handles real routing)
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//, /^\/verify\//, /\.[a-z]{2,4}$/i],
         // Cache all static assets
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // Network-first for API; cache-first for assets
         runtimeCaching: [
           {
-            urlPattern: /^\/api\//,
+            // Match /api/ anywhere in the URL (works for same-origin /api/* and absolute URLs)
+            urlPattern: /\/api\//,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
@@ -56,6 +57,7 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: '0.0.0.0',
     port: 5173,
     proxy: {
       '/api': {
