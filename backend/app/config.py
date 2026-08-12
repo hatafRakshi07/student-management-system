@@ -12,6 +12,11 @@ _DEFAULT_POSTGRES_URL = (
 )
 
 
+# Detect serverless environment (Vercel)
+_IS_VERCEL = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
+_DEFAULT_UPLOAD_DIR = "/tmp/uploads" if _IS_VERCEL else os.path.abspath("uploads")
+
+
 class Settings(BaseSettings):
     app_name: str = "Student Management System"
     app_version: str = "1.0.0"
@@ -32,10 +37,22 @@ class Settings(BaseSettings):
                 UserWarning,
                 stacklevel=2,
             )
-        # Ensure upload_dir exists on startup
-        if self.upload_dir:
-            os.makedirs(self.upload_dir, exist_ok=True)
+        # Note: Directory creation removed from import time to prevent Read-only filesystem errors on Vercel
         return self
+
+    def ensure_upload_dir(self) -> str:
+        """
+        Lazily ensures the upload directory exists on-demand before file writes.
+        Catches OSError safely on read-only serverless filesystems.
+        TODO: For Vercel production, migrate file uploads to Supabase Storage / S3 / Cloudinary
+        since ephemeral /tmp files do not persist across serverless instances.
+        """
+        try:
+            if self.upload_dir:
+                os.makedirs(self.upload_dir, exist_ok=True)
+        except (OSError, Exception) as err:
+            warnings.warn(f"Upload directory creation warning: {err}", UserWarning)
+        return self.upload_dir
 
     # Database: Supabase PostgreSQL
     database_url: str = os.getenv("DATABASE_URL", _DEFAULT_POSTGRES_URL)
@@ -54,8 +71,8 @@ class Settings(BaseSettings):
     # Gemini AI
     gemini_api_key: str = ""
 
-    # File Upload — resolved to absolute path at startup (see warn_insecure_defaults validator)
-    upload_dir: str = os.path.abspath("uploads")
+    # File Upload — defaults to /tmp/uploads on Vercel, relative uploads in local dev
+    upload_dir: str = os.getenv("UPLOAD_DIR", _DEFAULT_UPLOAD_DIR)
     max_file_size: int = 10485760  # 10 MB
 
     # Frontend URL (CORS)

@@ -39,8 +39,13 @@ class StorageService:
                 print(f"Failed uploading to Supabase storage: {e}. Falling back to local disk.")
 
         # Fallback to Local Disk
-        local_folder = os.path.join(settings.upload_dir, bucket_name)
-        os.makedirs(local_folder, exist_ok=True)
+        upload_base = settings.ensure_upload_dir()
+        local_folder = os.path.join(upload_base, bucket_name)
+        try:
+            os.makedirs(local_folder, exist_ok=True)
+        except OSError as err:
+            print(f"Warning: Local storage directory creation failed ({err}).")
+
         local_path = os.path.join(local_folder, unique_filename)
         
         with open(local_path, "wb") as f:
