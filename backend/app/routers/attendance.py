@@ -88,7 +88,7 @@ def get_class_students_for_attendance(
             ])
         q = q.filter(or_(*target_clauses))
 
-    if year and year != "All":
+    if year and year not in ("All", "All Years", "all", "ALL"):
         yr_clean = year.replace("st Year", "").replace("nd Year", "").replace("rd Year", "").replace("th Year", "").strip()
         yr_int = int(yr_clean) if yr_clean.isdigit() else (1 if "1" in year or "I" in year else (2 if "2" in year else 3))
         
