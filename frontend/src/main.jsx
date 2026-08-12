@@ -4,6 +4,18 @@ import App from './App.jsx'
 import './index.css'
 import { registerSW } from 'virtual:pwa-register'
 
+// Bind React hook primitives to window scope to permanently guard against bare-identifier minification & cross-chunk scope issues
+if (typeof window !== 'undefined') {
+  window.React = React
+  window.useEffect = React.useEffect
+  window.useState = React.useState
+  window.useCallback = React.useCallback
+  window.useMemo = React.useMemo
+  window.useRef = React.useRef
+  window.useContext = React.useContext
+  window.useReducer = React.useReducer
+}
+
 // Automatically force update Service Worker when new build is available
 const updateSW = registerSW({
   onNeedRefresh() {
@@ -38,7 +50,9 @@ const _isStaleChunkError = (msg) =>
     msg.includes('Loading chunk') ||
     msg.includes('Failed to fetch dynamically imported module') ||
     msg.includes('Failed to construct') ||
-    msg.includes('Invalid URL')
+    msg.includes('Invalid URL') ||
+    msg.includes('useEffect is not defined') ||
+    msg.includes('ReferenceError')
   )
 
 window.addEventListener('error', (e) => {
