@@ -1,34 +1,35 @@
-import React, { useState, useEffect } from 'react'
-import axios from 'axios'
-import toast from 'react-hot-toast'
+import React, { useState } from 'react'
 import { Award, ShieldCheck, TrendingUp, CheckCircle, Star } from 'lucide-react'
 
-export default function AdminAccreditationHub() {
-  const [naac, setNaac] = useState(null)
-  const [nirf, setNirf] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  const loadAccreditationData = async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('access_token')
-      const [naacRes, nirfRes] = await Promise.all([
-        axios.get('/api/accreditation/naac-aqar', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/accreditation/nirf-score', { headers: { Authorization: `Bearer ${token}` } })
-      ])
-
-      setNaac(naacRes.data)
-      setNirf(nirfRes.data)
-    } catch {
-      toast.error('Failed to load NAAC/NIRF Accreditation data')
-    } finally {
-      setLoading(false)
-    }
+const DEMO_NAAC = {
+  naac_grade: 'B+',
+  overall_cgpa: 2.71,
+  criteria_scores: {
+    'C1 — Curricular Aspects': '2.80 / 4.00',
+    'C2 — Teaching-Learning & Evaluation': '2.65 / 4.00',
+    'C3 — Research, Innovations & Extension': '2.50 / 4.00',
+    'C4 — Infrastructure & Learning Resources': '2.90 / 4.00',
+    'C5 — Student Support & Progression': '2.75 / 4.00',
+    'C6 — Governance, Leadership & Management': '2.60 / 4.00',
+    'C7 — Institutional Values & Best Practices': '2.80 / 4.00',
   }
+}
+const DEMO_NIRF = {
+  projected_rank_range: 'Band 201-300',
+  nirf_overall_score: 42.8,
+  parameter_scores: {
+    'Teaching, Learning & Resources (TLR)': '38.2 / 100',
+    'Research & Professional Practice (RP)': '18.5 / 100',
+    'Graduation Outcomes (GO)': '52.1 / 100',
+    'Outreach & Inclusivity (OI)': '61.4 / 100',
+    'Perception (PR)': '12.0 / 100',
+  }
+}
 
-  useEffect(() => {
-    loadAccreditationData()
-  }, [])
+export default function AdminAccreditationHub() {
+  const [naac] = useState(DEMO_NAAC)
+  const [nirf] = useState(DEMO_NIRF)
+
 
   return (
     <div className="space-y-6 animate-page">

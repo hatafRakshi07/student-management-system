@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 import {
   UploadCloud, CheckCircle2, RefreshCw, FileSpreadsheet, Users,
   DollarSign, AlertTriangle, Clock, Filter, ShieldCheck, FileText, Check
 } from 'lucide-react';
-
-const API_BASE = 'http://localhost:8000/api';
 
 const ImportModule = () => {
   const [activeTab, setActiveTab] = useState('report');
@@ -17,8 +15,8 @@ const ImportModule = () => {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
-  const token = localStorage.getItem('token');
-  const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+  // Auth headers & base URL are handled by the shared api instance (api.js)
+  // DO NOT use raw axios or hardcoded localhost here.
 
   useEffect(() => {
     fetchLatestData();
@@ -29,17 +27,17 @@ const ImportModule = () => {
     setError(null);
     try {
       // Fetch Latest Report
-      const repRes = await axios.get(`${API_BASE}/import/latest-report`, authHeaders);
+      const repRes = await api.get('/import/latest-report');
       if (repRes.data && repRes.data.id) {
         setReport(repRes.data);
       }
 
       // Fetch Dashboard Metrics
-      const metRes = await axios.get(`${API_BASE}/import/dashboard-metrics`, authHeaders);
+      const metRes = await api.get('/import/dashboard-metrics');
       setMetrics(metRes.data);
 
       // Fetch Unmatched Fee Records
-      const unmRes = await axios.get(`${API_BASE}/import/unmatched-fees`, authHeaders);
+      const unmRes = await api.get('/import/unmatched-fees');
       setUnmatchedRecords(unmRes.data.records || []);
     } catch (err) {
       console.error('Error fetching import module data:', err);
@@ -54,7 +52,7 @@ const ImportModule = () => {
     setError(null);
     setSuccessMsg(null);
     try {
-      const res = await axios.post(`${API_BASE}/import/run`, {}, authHeaders);
+      const res = await api.post('/import/run', {});
       if (res.data && res.data.report) {
         setReport(res.data.report);
         setSuccessMsg('Import executed successfully! Student Master and Fee Details imported cleanly.');

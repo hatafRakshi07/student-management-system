@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { analyticsAPI, feesAPI } from '../../services/api'
-import axios from 'axios'
+import { analyticsAPI, feesAPI, feeAPI } from '../../services/api'
 import ReceiptModal from '../../components/fees/ReceiptModal'
 import {
   GraduationCap, Users, DollarSign, UserCheck, BookOpen,
@@ -46,10 +45,7 @@ export default function AdminDashboard() {
 
   const openReceiptModal = async (receiptId, fallbackItem) => {
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.get(`/api/fees/receipt/${receiptId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await feeAPI.getReceipt(receiptId)
       setSelectedReceipt(res.data)
       setReceiptModalOpen(true)
     } catch (err) {

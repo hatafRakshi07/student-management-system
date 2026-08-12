@@ -1,35 +1,26 @@
-import React, { useState, useEffect } from 'react'
-import axios from 'axios'
-import toast from 'react-hot-toast'
+import React, { useState } from 'react'
 import { Package, Search, Plus, QrCode, Shield, CheckCircle } from 'lucide-react'
 
+const DEMO_STATS = { total_assets: 347, available_assets: 198, assigned_assets: 132, total_valuation: 4862500 }
+
+const DEMO_ASSETS = [
+  { id: 1, asset_code: 'COMP-001', item_name: 'Dell Inspiron Desktop PC', category: 'Computers', location: 'Computer Lab 1', purchase_price: 45000, status: 'Active' },
+  { id: 2, asset_code: 'COMP-002', item_name: 'HP EliteBook Laptop', category: 'Computers', location: 'Admin Office', purchase_price: 62000, status: 'Active' },
+  { id: 3, asset_code: 'FURN-041', item_name: 'Classroom Bench (6-seater)', category: 'Furniture', location: 'Room 204', purchase_price: 7200, status: 'Active' },
+  { id: 4, asset_code: 'PROJ-007', item_name: 'Epson EB-X51 Projector', category: 'AV Equipment', location: 'Seminar Hall', purchase_price: 38500, status: 'Active' },
+  { id: 5, asset_code: 'LAB-019', item_name: 'Binocular Microscope', category: 'Lab Equipment', location: 'Science Lab', purchase_price: 24000, status: 'Active' },
+  { id: 6, asset_code: 'FURN-018', item_name: 'Steel Almirah', category: 'Furniture', location: 'Staff Room', purchase_price: 9500, status: 'Active' },
+  { id: 7, asset_code: 'ELEC-003', item_name: 'Ceiling Fan (48")', category: 'Electrical', location: 'Classroom 301', purchase_price: 3200, status: 'Active' },
+  { id: 8, asset_code: 'COMP-015', item_name: 'HP LaserJet Printer', category: 'Computers', location: 'Office', purchase_price: 18500, status: 'Under Repair' },
+  { id: 9, asset_code: 'FURN-092', item_name: 'Revolving Chair', category: 'Furniture', location: 'Principal Cabin', purchase_price: 5500, status: 'Active' },
+  { id: 10, asset_code: 'LAB-031', item_name: 'Digital Weighing Balance', category: 'Lab Equipment', location: 'Chemistry Lab', purchase_price: 12000, status: 'Active' },
+]
+
 export default function AdminInventoryHub() {
-  const [stats, setStats] = useState(null)
-  const [assets, setAssets] = useState([])
+  const [stats] = useState(DEMO_STATS)
+  const [assets] = useState(DEMO_ASSETS)
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
 
-  const loadInventory = async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('access_token')
-      const [statsRes, assetRes] = await Promise.all([
-        axios.get('/api/inventory/admin/dashboard', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/inventory/assets', { params: { search }, headers: { Authorization: `Bearer ${token}` } })
-      ])
-
-      setStats(statsRes.data)
-      setAssets(assetRes.data.assets || [])
-    } catch {
-      toast.error('Failed to load Inventory & Asset Management data')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadInventory()
-  }, [])
 
   return (
     <div className="space-y-6 animate-page">

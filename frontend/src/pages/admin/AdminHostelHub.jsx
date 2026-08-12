@@ -1,32 +1,39 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
 import toast from 'react-hot-toast'
 import { Home, Users, BedDouble, AlertCircle, Plus, Search, CheckCircle, Shield, Phone, FileText } from 'lucide-react'
 
+const DEMO_DATA = {
+  total_rooms: 48, occupied_rooms: 41, available_rooms: 7, total_capacity: 192, total_residents: 164,
+  pending_complaints: 5, total_fees_collected: 824000, pending_dues: 96000,
+  rooms: [
+    { room_number: 'A-101', block_wing: 'Block A', capacity: 4, occupied: 4, type: 'General', warden: 'Mrs. Savita Jain', fees: 8500 },
+    { room_number: 'A-102', block_wing: 'Block A', capacity: 4, occupied: 3, type: 'General', warden: 'Mrs. Savita Jain', fees: 8500 },
+    { room_number: 'A-201', block_wing: 'Block A', capacity: 2, occupied: 2, type: 'AC Double', warden: 'Mrs. Savita Jain', fees: 14000 },
+    { room_number: 'B-101', block_wing: 'Block B', capacity: 4, occupied: 4, type: 'General', warden: 'Mrs. Rekha Sharma', fees: 8500 },
+    { room_number: 'B-102', block_wing: 'Block B', capacity: 4, occupied: 2, type: 'General', warden: 'Mrs. Rekha Sharma', fees: 8500 },
+    { room_number: 'B-201', block_wing: 'Block B', capacity: 1, occupied: 1, type: 'Single AC', warden: 'Mrs. Rekha Sharma', fees: 18000 },
+    { room_number: 'C-101', block_wing: 'Block C', capacity: 6, occupied: 6, type: 'Economy', warden: 'Mrs. Usha Gupta', fees: 6000 },
+    { room_number: 'C-102', block_wing: 'Block C', capacity: 6, occupied: 4, type: 'Economy', warden: 'Mrs. Usha Gupta', fees: 6000 },
+  ],
+  complaints: [
+    { id: 1, room: 'A-101', issue: 'Water leakage in bathroom', status: 'Pending', date: '2024-08-10', priority: 'High' },
+    { id: 2, room: 'B-201', issue: 'AC not working properly', status: 'In Progress', date: '2024-08-09', priority: 'Medium' },
+    { id: 3, room: 'C-101', issue: 'Broken window latch', status: 'Resolved', date: '2024-08-07', priority: 'Low' },
+    { id: 4, room: 'A-201', issue: 'Wi-Fi connectivity issue', status: 'Pending', date: '2024-08-11', priority: 'Medium' },
+    { id: 5, room: 'B-102', issue: 'Mattress replacement needed', status: 'Resolved', date: '2024-08-05', priority: 'Low' },
+  ]
+}
+
 export default function AdminHostelHub() {
-  const [data, setData] = useState(null)
+  const [data, setData] = useState(DEMO_DATA)
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('rooms') // 'rooms' | 'complaints'
 
-  const loadHostelData = async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.get('/api/hostel/admin/dashboard', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setData(res.data)
-    } catch {
-      toast.error('Failed to load Hostel Management data')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    loadHostelData()
+    // Demo data loaded above; real backend endpoint can be integrated later
   }, [])
+
 
   const rooms = (data?.rooms || []).filter(r => 
     r.room_number.toLowerCase().includes(search.toLowerCase()) ||

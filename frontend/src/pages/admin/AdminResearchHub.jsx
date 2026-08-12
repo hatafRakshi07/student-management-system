@@ -1,34 +1,19 @@
-import React, { useState, useEffect } from 'react'
-import axios from 'axios'
-import toast from 'react-hot-toast'
+import React, { useState } from 'react'
 import { BookOpen, Award, DollarSign, Plus, FileText, CheckCircle } from 'lucide-react'
 
+const DEMO_STATS = { total_publications: 38, total_funded_projects: 7, total_grants_amount: 1240000, average_impact_factor: 2.8 }
+const DEMO_PUBS = [
+  { id: 1, title: 'Impact of Digital Learning on Rural Girl Education', journal_name: 'IJSER', faculty_name: 'Dr. Meena Verma', doi: '10.9781/ijser.2024.1001', impact_factor: 3.1, year: 2024 },
+  { id: 2, title: 'Microplastic Contamination in Groundwater Sources', journal_name: 'Environmental Chemistry Letters', faculty_name: 'Dr. Sonal Sharma', doi: '10.1007/ecl.2024.0892', impact_factor: 4.6, year: 2024 },
+  { id: 3, title: 'Women Entrepreneurship in Tier-3 Cities of MP', journal_name: 'IOSR Journal of Business', faculty_name: 'Dr. Priya Mishra', doi: '10.9790/iosrjbm.2024.0234', impact_factor: 2.1, year: 2024 },
+  { id: 4, title: 'Phytoremediation of Heavy Metals in Soil', journal_name: 'Chemosphere', faculty_name: 'Dr. Sonal Sharma', doi: '10.1016/chemosphere.2023.0511', impact_factor: 5.8, year: 2023 },
+  { id: 5, title: 'Sanskrit Literature and Modern Psychology', journal_name: 'Indian Journal of Sanskrit Studies', faculty_name: 'Dr. Anjali Singh', doi: '10.2021/IJSS.2023.0098', impact_factor: 0.9, year: 2023 },
+]
+
 export default function AdminResearchHub() {
-  const [stats, setStats] = useState(null)
-  const [publications, setPublications] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [stats] = useState(DEMO_STATS)
+  const [publications] = useState(DEMO_PUBS)
 
-  const loadResearchData = async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('access_token')
-      const [statsRes, pubsRes] = await Promise.all([
-        axios.get('/api/research/admin/dashboard', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/research/publications', { headers: { Authorization: `Bearer ${token}` } })
-      ])
-
-      setStats(statsRes.data)
-      setPublications(pubsRes.data.publications || [])
-    } catch {
-      toast.error('Failed to load Research Management data')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadResearchData()
-  }, [])
 
   return (
     <div className="space-y-6 animate-page">

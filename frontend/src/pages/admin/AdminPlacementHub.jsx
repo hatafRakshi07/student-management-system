@@ -1,34 +1,21 @@
-import React, { useState, useEffect } from 'react'
-import axios from 'axios'
-import toast from 'react-hot-toast'
+import React, { useState } from 'react'
 import { Briefcase, Building, Users, Award, Calendar, CheckCircle } from 'lucide-react'
 
+const DEMO_STATS = {
+  total_companies_visited: 24, active_drives_count: 3, highest_package: '₹6.5 LPA', average_package: '₹3.2 LPA'
+}
+const DEMO_DRIVES = [
+  { drive_id: 1, drive_title: 'Campus Recruitment 2024', company_name: 'Infosys BPM', job_role: 'Associate Process Executive', ctc_package: '₹3.0 LPA', drive_date: '2024-08-25', eligibility_cgpa: 5.5 },
+  { drive_id: 2, drive_title: 'Graduate Apprenticeship', company_name: 'HCL Technologies', job_role: 'IT Support Analyst', ctc_package: '₹2.8 LPA', drive_date: '2024-09-02', eligibility_cgpa: 5.0 },
+  { drive_id: 3, drive_title: 'Finance Trainee Program', company_name: 'HDFC Bank', job_role: 'Relationship Officer', ctc_package: '₹3.5 LPA', drive_date: '2024-09-10', eligibility_cgpa: 6.0 },
+  { drive_id: 4, drive_title: 'Digital Marketing Executive', company_name: 'Zomato India', job_role: 'Marketing Associate', ctc_package: '₹4.2 LPA', drive_date: '2024-09-15', eligibility_cgpa: 5.5 },
+  { drive_id: 5, drive_title: 'Teacher Fellowship', company_name: 'Teach For India', job_role: 'Fellow Teacher', ctc_package: '₹6.5 LPA', drive_date: '2024-09-20', eligibility_cgpa: 6.5 },
+]
+
 export default function AdminPlacementHub() {
-  const [stats, setStats] = useState(null)
-  const [drives, setDrives] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [stats] = useState(DEMO_STATS)
+  const [drives] = useState(DEMO_DRIVES)
 
-  const loadPlacementData = async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('access_token')
-      const [statsRes, drivesRes] = await Promise.all([
-        axios.get('/api/placement/admin/dashboard', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/placement/drives', { headers: { Authorization: `Bearer ${token}` } })
-      ])
-
-      setStats(statsRes.data)
-      setDrives(drivesRes.data.drives || [])
-    } catch {
-      toast.error('Failed to load Placement ERP data')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadPlacementData()
-  }, [])
 
   return (
     <div className="space-y-6 animate-page">

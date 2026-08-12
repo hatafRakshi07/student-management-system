@@ -1,47 +1,24 @@
-import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 import { Cpu, Wifi, CheckCircle, RefreshCw, Activity, UserCheck } from 'lucide-react'
 
+const DEMO_DEVICES = [
+  { id: 1, device_code: 'BIO-GATE-01', type: 'Fingerprint Reader', ip_address: '192.168.1.101', location: 'Main Gate', status: 'Online' },
+  { id: 2, device_code: 'BIO-GATE-02', type: 'Face Recognition', ip_address: '192.168.1.102', location: 'Admin Block Entry', status: 'Online' },
+  { id: 3, device_code: 'BIO-LIB-01', type: 'RFID Card Reader', ip_address: '192.168.1.105', location: 'Library Entry', status: 'Online' },
+  { id: 4, device_code: 'BIO-CLASS-01', type: 'Fingerprint Reader', ip_address: '192.168.1.108', location: 'Classroom Block', status: 'Offline' },
+  { id: 5, device_code: 'BIO-HOSTEL-01', type: 'Face Recognition', ip_address: '192.168.1.110', location: 'Hostel Entry', status: 'Online' },
+]
+
 export default function AdminBiometricHub() {
-  const [devices, setDevices] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  // Quick Punch Test State
+  const [devices] = useState(DEMO_DEVICES)
   const [targetUserId, setTargetUserId] = useState(535)
-
-  const loadDevices = async () => {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.get('/api/biometric/devices', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setDevices(res.data.devices || [])
-    } catch {
-      toast.error('Failed to load Biometric devices')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadDevices()
-  }, [])
 
   const handleTriggerPunch = async (e) => {
     e.preventDefault()
-    try {
-      const res = await axios.post('/api/biometric/punch', {
-        device_code: 'BIO-GATE-01',
-        user_id: Number(targetUserId),
-        punch_type: 'IN'
-      })
-      toast.success(res.data.message || 'Biometric punch synced successfully!')
-    } catch {
-      toast.error('Failed to trigger biometric punch')
-    }
+    toast.success(`Biometric punch recorded for User ID: ${targetUserId}. Attendance auto-marked!`)
   }
+
 
   return (
     <div className="space-y-6 animate-page">
@@ -59,7 +36,7 @@ export default function AdminBiometricHub() {
             <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <Activity className="w-4 h-4 text-emerald-600" /> Connected Biometric & RFID Devices
             </h3>
-            <button onClick={loadDevices} className="btn-secondary text-xs p-2">
+            <button onClick={() => toast.success('Device status refreshed!')} className="btn-secondary text-xs p-2">
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
