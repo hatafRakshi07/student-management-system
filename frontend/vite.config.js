@@ -68,18 +68,7 @@ export default defineConfig({
   },
   build: {
     sourcemap: false,
-    chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('recharts')) return 'charts'
-            if (id.includes('lucide-react')) return 'icons'
-            return 'vendor'
-          }
-        },
-      },
-    },
+    chunkSizeWarningLimit: 2000,
   },
 })
 
