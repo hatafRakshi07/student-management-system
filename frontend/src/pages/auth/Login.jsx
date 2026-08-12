@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
 import { Eye, EyeOff, Moon, Sun, GraduationCap, BookOpen, BarChart3, MessageSquare, Award, ShieldCheck } from 'lucide-react'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
+import { authAPI } from '../../services/api'
 
 const features = [
   { icon: BarChart3, label: 'AI-Powered Performance Insights' },
@@ -27,7 +28,7 @@ export default function Login() {
     const warmedKey = 'backend_warmed'
     if (sessionStorage.getItem(warmedKey)) return
     setWarming(true)
-    fetch('/api/auth/ping', { method: 'GET', signal: AbortSignal.timeout(60000) })
+    authAPI.ping()
       .catch(() => {})
       .finally(() => { setWarming(false); sessionStorage.setItem(warmedKey, '1') })
   }, [])
@@ -66,8 +67,11 @@ export default function Login() {
       } else {
         msg = 'Login failed. Please try again.'
       }
-      // Replace Axios internal URL errors with a friendly message
-      if (!msg || msg.includes('Invalid URL') || msg.includes('Failed to construct') || msg.includes('Network Error')) {
+
+      // Friendly messages for timeout, network, or URL errors
+      if (msg.includes('timeout') || err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+        msg = 'Server response timed out. The server may be waking up — please click Sign In again in a few seconds.'
+      } else if (!msg || msg.includes('Invalid URL') || msg.includes('Failed to construct') || msg.includes('Network Error')) {
         msg = 'Unable to connect to server. Please check your connection and try again.'
       }
       toast.error(String(msg))

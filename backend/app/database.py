@@ -153,12 +153,22 @@ def create_tables():
         print("Database schema verified.")
         _tables_initialized = True
         
+        # Only run heavy seeding if database has no users yet (avoids 5-10s cold-start delay)
+        has_users = False
         try:
-            from app.seed import seed_database
-            seed_database()
-            from app.seed_aklank_staff import seed_aklank_staff_data
-            seed_aklank_staff_data()
-        except Exception as seed_err:
-            print("Seed notice:", seed_err)
+            with engine.connect() as conn:
+                res = conn.execute(text("SELECT 1 FROM users LIMIT 1")).fetchone()
+                has_users = bool(res)
+        except Exception:
+            has_users = False
+
+        if not has_users:
+            try:
+                from app.seed import seed_database
+                seed_database()
+                from app.seed_aklank_staff import seed_aklank_staff_data
+                seed_aklank_staff_data()
+            except Exception as seed_err:
+                print("Seed notice:", seed_err)
     except Exception as err:
         print("Schema init notice:", err)

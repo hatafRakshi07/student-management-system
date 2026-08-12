@@ -50,7 +50,7 @@ const BASE_URL = getBaseURL()
 // ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 30000,
+  timeout: 60000,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -73,26 +73,29 @@ api.interceptors.response.use(
     const config = error.config || {}
     const isLoginReq = config.url?.includes('/auth/login')
 
-    // Handle Vercel proxy timeout or server cold start (500, 502, 504, ECONNABORTED, Network Error)
+    // Handle Vercel proxy timeout or server cold start (500, 502, 504, ECONNABORTED, ETIMEDOUT, Network Error, timeout)
     const isServerErrorOrTimeout =
       !error.response ||
-      error.response.status === 500 ||
-      error.response.status === 502 ||
-      error.response.status === 504 ||
+      error.response?.status === 500 ||
+      error.response?.status === 502 ||
+      error.response?.status === 504 ||
       error.code === 'ECONNABORTED' ||
-      error.message?.includes('Network Error')
+      error.code === 'ETIMEDOUT' ||
+      error.message?.includes('Network Error') ||
+      error.message?.includes('timeout')
 
     if (isServerErrorOrTimeout && !config._retried) {
       config._retried = true
-      toast.loading('Connecting to production backend, retrying...', { id: 'backend-retry-toast', duration: 4000 })
+      config.timeout = 90000
+      toast.loading('Connecting to backend (waking up server), retrying...', { id: 'backend-retry-toast', duration: 5000 })
 
-      // Fallback directly to backend if proxy returned 500/502/504
-      if (config.baseURL !== DIRECT_BACKEND) {
+      // Fallback directly to backend if proxy returned 500/502/504 or timed out
+      if (config.baseURL !== DIRECT_BACKEND && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
         config.baseURL = DIRECT_BACKEND
       }
 
-      // Wait 3 seconds before retrying
-      await new Promise((resolve) => setTimeout(resolve, 3000))
+      // Wait 2 seconds before retrying
+      await new Promise((resolve) => setTimeout(resolve, 2000))
       return api(config)
     }
 
@@ -120,6 +123,7 @@ api.interceptors.response.use(
 
 // ─── API Surface ──────────────────────────────────────────────────────────────
 export const authAPI = {
+  ping: () => api.get('/auth/ping'),
   login: (data) => api.post('/auth/login', data),
   registerStudent: (data) => api.post('/auth/register/student', data),
   registerTeacher: (data) => api.post('/auth/register/teacher', data),
