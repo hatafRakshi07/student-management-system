@@ -20,8 +20,10 @@ def list_assignments(current_user: User = Depends(get_current_user), db: Session
     assignments = db.query(Assignment).filter(Assignment.is_active == True).all()
     return {"assignments": [
         {"id": a.id, "title": a.title, "description": a.description,
-         "deadline": a.deadline, "subject_id": a.subject_id,
-         "teacher_id": a.teacher_id, "max_marks": a.max_marks, "created_at": a.created_at}
+         "deadline": a.deadline.isoformat() if hasattr(a.deadline, 'isoformat') else str(a.deadline),
+         "subject_id": a.subject_id,
+         "teacher_id": a.teacher_id, "max_marks": a.max_marks,
+         "created_at": a.created_at.isoformat() if hasattr(a.created_at, 'isoformat') else str(a.created_at)}
         for a in assignments]}
 
 

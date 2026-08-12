@@ -17,7 +17,7 @@ def my_notifications(current_user: User = Depends(get_current_user), db: Session
     unread = sum(1 for n in notifs if not n.is_read)
     return {"unread": unread, "notifications": [
         {"id": n.id, "title": n.title, "message": n.message,
-         "type": n.notification_type, "is_read": n.is_read, "created_at": n.created_at}
+         "type": n.notification_type, "is_read": n.is_read, "created_at": n.created_at.isoformat() if n.created_at else None}
         for n in notifs]}
 
 

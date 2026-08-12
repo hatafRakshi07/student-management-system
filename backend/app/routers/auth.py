@@ -33,13 +33,19 @@ def ping():
     return {"status": "ok"}
 
 
+def _to_iso(dt):
+    if dt is None:
+        return None
+    return dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)
+
 def _user_out(user: User, db: Session, sp=None, tp=None, pp=None) -> dict:
     role_val = user.role.value if hasattr(user.role, 'value') else str(user.role)
     data = {
         "id": user.id, "email": user.email, "full_name": user.full_name,
         "role": role_val, "phone": getattr(user, 'phone', None),
         "profile_photo": getattr(user, 'profile_photo', None), "is_active": getattr(user, 'is_active', True),
-        "created_at": getattr(user, 'created_at', None), "last_login": getattr(user, 'last_login', None),
+        "created_at": _to_iso(getattr(user, 'created_at', None)),
+        "last_login": _to_iso(getattr(user, 'last_login', None)),
     }
     if (user.role == UserRole.student or role_val == "student"):
         try:

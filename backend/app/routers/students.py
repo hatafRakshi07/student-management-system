@@ -68,7 +68,7 @@ def list_students(
             "section": sp.section if sp else None,
             "semester": sp.semester if sp else None,
             "year": sp.year if sp else None,
-            "created_at": u.created_at,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
             "total_fee": fs.total_fee if fs else 0.0,
             "total_paid": fs.total_paid if fs else 0.0,
             "pending_fee": fs.pending_fee if fs else 0.0,

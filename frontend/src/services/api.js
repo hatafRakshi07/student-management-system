@@ -97,11 +97,14 @@ api.interceptors.response.use(
     } else if (error.response?.status === 403) {
       toast.error('Access denied')
     } else if (error.response?.status === 500) {
-      const msg =
-        error.response?.data?.error ||
-        error.response?.data?.detail ||
-        'Server internal error (500). Please try again.'
-      toast.error(msg)
+      let rawErr = error.response?.data?.error || error.response?.data?.detail
+      let msg = 'Server internal error (500). Please try again.'
+      if (typeof rawErr === 'string') {
+        msg = rawErr
+      } else if (rawErr && typeof rawErr === 'object') {
+        msg = rawErr.message || rawErr.msg || rawErr.detail || JSON.stringify(rawErr)
+      }
+      toast.error(String(msg))
     }
     return Promise.reject(error)
   }

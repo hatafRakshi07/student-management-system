@@ -23,7 +23,7 @@ def list_notices(current_user: User = Depends(get_current_user), db: Session = D
     ).order_by(Notice.created_at.desc()).all()
     return {"notices": [
         {"id": n.id, "title": n.title, "description": n.description,
-         "created_at": n.created_at,
+         "created_at": n.created_at.isoformat() if hasattr(n.created_at, 'isoformat') else str(n.created_at),
          "target_role": n.target_role.value if hasattr(n.target_role, 'value') else str(n.target_role),
          "created_by_id": n.created_by_id} for n in notices]}
 
