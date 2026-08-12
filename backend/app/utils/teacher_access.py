@@ -89,6 +89,7 @@ def filter_student_query_for_teacher(query, current_user: User, db: Session):
     ]
     
     # Department keyword fallbacks
+    dept_lower = (dept or "").lower()
     if "computer" in dept_lower or "bca" in dept_lower:
         dept_filters.extend([
             StudentProfile.class_name.ilike("%bca%"),
