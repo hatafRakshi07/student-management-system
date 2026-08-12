@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { studentAPI, authAPI, feeAPI } from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 import Modal from '../../components/common/Modal'
 import {
@@ -8,6 +9,8 @@ import {
 } from 'lucide-react'
 
 export default function StudentManagement() {
+  const { user } = useAuth()
+  const isTeacher = user?.role === 'teacher'
   const [students, setStudents] = useState([])
   const [search, setSearch] = useState('')
   const [classFilter, setClassFilter] = useState('')
@@ -125,12 +128,23 @@ export default function StudentManagement() {
             value={classFilter}
             onChange={e => { setClassFilter(e.target.value); load(search, 0, e.target.value) }}
           >
-            <option value="">All Classes</option>
-            <option value="B.A">B.A</option>
-            <option value="B.C.A">B.C.A</option>
-            <option value="B.Com">B.Com</option>
-            <option value="B.Sc">B.Sc</option>
-            <option value="M.A">M.A</option>
+            {isTeacher ? (
+              <>
+                <option value="">All BCA Classes</option>
+                <option value="Part-I">B.C.A. Part-I (1st Year)</option>
+                <option value="Part-II">B.C.A. Part-II (2nd Year)</option>
+                <option value="Part-III">B.C.A. Part-III (3rd Year)</option>
+              </>
+            ) : (
+              <>
+                <option value="">All Classes</option>
+                <option value="B.A">B.A</option>
+                <option value="B.C.A">B.C.A</option>
+                <option value="B.Com">B.Com</option>
+                <option value="B.Sc">B.Sc</option>
+                <option value="M.A">M.A</option>
+              </>
+            )}
           </select>
         </div>
 

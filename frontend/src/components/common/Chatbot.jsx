@@ -40,7 +40,7 @@ export default function Chatbot() {
       {/* FAB Button */}
       <button
         onClick={() => setOpen(true)}
-        className={`fixed bottom-20 sm:bottom-6 right-4 sm:right-6 w-14 h-14 bg-gradient-to-br from-primary-500 to-accent-600 hover:from-primary-600 hover:to-accent-700 text-white rounded-2xl shadow-lg shadow-primary-500/30 flex items-center justify-center z-50 transition-all duration-300 hover:scale-110 active:scale-95 ${open ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
+        className={`fixed bottom-20 sm:bottom-20 right-4 sm:right-6 w-14 h-14 bg-gradient-to-br from-primary-500 to-accent-600 hover:from-primary-600 hover:to-accent-700 text-white rounded-2xl shadow-lg shadow-primary-500/30 flex items-center justify-center z-50 transition-all duration-300 hover:scale-110 active:scale-95 ${open ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
         aria-label="Open AI Assistant"
       >
         <Sparkles className="h-6 w-6" />
