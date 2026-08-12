@@ -55,7 +55,7 @@ export default function FeeManagement() {
 
   useEffect(() => {
     loadData()
-    studentAPI.list({ limit: 300 }).then(r => setStudents(r.data.students || [])).catch(() => {})
+    studentAPI.list({ limit: 100 }).then(r => setStudents(r.data.students || [])).catch(() => {})
   }, [page, pageSize, sessionFilter, modeFilter, classFilter, statusFilter])
 
   const handleSearchSubmit = (e) => {

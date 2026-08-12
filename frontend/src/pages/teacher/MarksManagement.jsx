@@ -18,7 +18,7 @@ export default function MarksManagement() {
   const [existingMarks, setExistingMarks] = useState([])
 
   const loadExams = () => examAPI.list().then(r => setExams(r.data.exams || [])).catch(() => {})
-  const loadStudents = () => studentAPI.list({ limit: 200 }).then(r => setStudents(r.data.students || [])).catch(() => {})
+  const loadStudents = () => studentAPI.list({ limit: 100 }).then(r => setStudents(r.data.students || [])).catch(() => {})
   useEffect(() => { loadExams(); loadStudents() }, [])
 
   const createExam = async () => {

@@ -213,6 +213,7 @@ def search_students(
         q = q.filter(
             User.full_name.ilike(f"%{query}%") |
             User.phone.ilike(f"%{query}%") |
+            StudentProfile.student_name.ilike(f"%{query}%") |
             StudentProfile.roll_number.ilike(f"%{query}%") |
             StudentProfile.reg_no.ilike(f"%{query}%") |
             StudentProfile.admission_no.ilike(f"%{query}%") |
@@ -248,13 +249,12 @@ def search_students(
 
     total = q.count()
 
-    # Aggregate stats across the full filtered set (not just current page)
-    all_rows = q.all()
-    active_count = sum(1 for u, sp, fs in all_rows if (sp.status or ("ACTIVE" if u.is_active else "INACTIVE")) == "ACTIVE")
-    unique_classes = len(set(sp.class_name for _, sp, _ in all_rows if sp.class_name))
-    fee_pending_count = sum(1 for _, _, fs in all_rows if fs and fs.pending_fee and fs.pending_fee > 0)
+    # Aggregate stats via SQL COUNT queries (no full fetch into memory)
+    active_count = q.filter(User.is_active == True).count()
+    unique_classes = q.with_entities(func.count(func.distinct(StudentProfile.class_name))).scalar() or 0
+    fee_pending_count = q.filter(FeeSummary.pending_fee > 0).count()
 
-    results = all_rows[skip: skip + limit]
+    results = q.offset(skip).limit(limit).all()
 
     return {
         "total": total,

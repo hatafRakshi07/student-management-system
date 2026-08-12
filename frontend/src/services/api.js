@@ -73,6 +73,14 @@ api.interceptors.response.use(
     const config = error.config || {}
     const isLoginReq = config.url?.includes('/auth/login')
 
+    // Detect true offline (no WiFi, no mobile data)
+    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine
+    if (isOffline && !config._offlineToasted) {
+      config._offlineToasted = true
+      toast.error('No internet connection. Please check your WiFi or mobile data.', { id: 'offline-toast', duration: 4000 })
+      return Promise.reject(error)
+    }
+
     // Handle Vercel proxy timeout or server cold start (500, 502, 504, ECONNABORTED, ETIMEDOUT, Network Error, timeout)
     const isServerErrorOrTimeout =
       !error.response ||
@@ -87,7 +95,7 @@ api.interceptors.response.use(
     if (isServerErrorOrTimeout && !config._retried) {
       config._retried = true
       config.timeout = 90000
-      toast.loading('Connecting to backend (waking up server), retrying...', { id: 'backend-retry-toast', duration: 5000 })
+      toast.loading('Connecting to server, retrying…', { id: 'backend-retry-toast', duration: 6000 })
 
       // Fallback directly to backend if proxy returned 500/502/504 or timed out
       if (config.baseURL !== DIRECT_BACKEND && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
@@ -97,6 +105,15 @@ api.interceptors.response.use(
       // Wait 2 seconds before retrying
       await new Promise((resolve) => setTimeout(resolve, 2000))
       return api(config)
+    }
+
+    // After retry also failed — dismiss loading toast
+    if (config._retried) {
+      toast.dismiss('backend-retry-toast')
+      if (!error.response) {
+        toast.error('Server unreachable. Please check your connection or try again later.', { id: 'unreachable-toast', duration: 5000 })
+        return Promise.reject(error)
+      }
     }
 
     if (error.response?.status === 401 && !isLoginReq) {
