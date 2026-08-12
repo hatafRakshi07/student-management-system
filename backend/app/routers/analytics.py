@@ -23,17 +23,14 @@ def admin_dashboard(_=Depends(require_admin), db: Session = Depends(get_db)):
 
     now = datetime.utcnow()
 
-    total_students = db.query(func.count(User.id)).filter(
-        User.role == UserRole.student
-    ).scalar() or 0
-
-    active_students = db.query(func.count(User.id)).filter(
-        User.role == UserRole.student, User.is_active == True
-    ).scalar() or total_students
-
-    total_teachers = db.query(func.count(User.id)).filter(
-        User.role == UserRole.teacher, User.is_active == True
-    ).scalar() or 0
+    user_stats = db.query(
+        func.count(case(((User.role == UserRole.student), 1))),
+        func.count(case(((User.role == UserRole.student) & (User.is_active == True), 1))),
+        func.count(case(((User.role == UserRole.teacher) & (User.is_active == True), 1))),
+    ).first()
+    total_students = user_stats[0] or 0
+    active_students = user_stats[1] or total_students
+    total_teachers = user_stats[2] or 0
 
     total_assignments = db.query(func.count(Assignment.id)).filter(
         Assignment.is_active == True

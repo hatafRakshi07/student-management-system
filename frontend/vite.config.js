@@ -34,14 +34,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            // Match /api/ anywhere in the URL (works for same-origin /api/* and absolute URLs)
+            // Match /api/ anywhere in the URL — bypass Service Worker delay
             urlPattern: /\/api\//,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 10,
-              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-            },
+            handler: 'NetworkOnly',
           },
           {
             urlPattern: /\.(png|jpg|jpeg|svg|gif|webp)$/,
