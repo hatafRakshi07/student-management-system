@@ -19,6 +19,7 @@ export default function StudentManagement() {
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState({ total: 0, skip: 0 })
+  const [stats, setStats] = useState({ active_count: 0, unique_classes: 0, fee_pending_count: 0 })
 
   const [form, setForm] = useState({
     email: '', full_name: '', password: 'Student@123', phone: '',
@@ -31,6 +32,7 @@ export default function StudentManagement() {
     studentAPI.search({ query: q, class_name: cls, skip, limit: 25 }).then(r => {
       setStudents(r.data.students || [])
       setPage({ total: r.data.total || 0, skip })
+      if (r.data.stats) setStats(r.data.stats)
     }).catch(() => {
       toast.error('Failed to search student records')
     }).finally(() => setLoading(false))
@@ -92,21 +94,15 @@ export default function StudentManagement() {
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mt-1">Total Enrolled</p>
         </div>
         <div className="card p-4 text-center bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/40">
-          <p className="text-2xl font-black text-emerald-600">
-            {students.filter(s => s.status === 'ACTIVE').length}
-          </p>
+          <p className="text-2xl font-black text-emerald-600">{stats.active_count}</p>
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mt-1">Active Batch</p>
         </div>
         <div className="card p-4 text-center bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/40">
-          <p className="text-2xl font-black text-purple-600">
-            {new Set(students.map(s => s.department)).size}
-          </p>
+          <p className="text-2xl font-black text-purple-600">{stats.unique_classes}</p>
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mt-1">Courses / Depts</p>
         </div>
         <div className="card p-4 text-center bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40">
-          <p className="text-2xl font-black text-amber-600">
-            {students.filter(s => s.pending_fee > 0).length}
-          </p>
+          <p className="text-2xl font-black text-amber-600">{stats.fee_pending_count}</p>
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mt-1">Fee Pending</p>
         </div>
       </div>

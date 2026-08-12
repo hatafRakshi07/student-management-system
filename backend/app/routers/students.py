@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func, case
 from typing import Optional
 
 from app.database import get_db
@@ -246,10 +247,22 @@ def search_students(
         q = q.filter(User.id.in_(subq))
 
     total = q.count()
-    results = q.offset(skip).limit(limit).all()
+
+    # Aggregate stats across the full filtered set (not just current page)
+    all_rows = q.all()
+    active_count = sum(1 for u, sp, fs in all_rows if (sp.status or ("ACTIVE" if u.is_active else "INACTIVE")) == "ACTIVE")
+    unique_classes = len(set(sp.class_name for _, sp, _ in all_rows if sp.class_name))
+    fee_pending_count = sum(1 for _, _, fs in all_rows if fs and fs.pending_fee and fs.pending_fee > 0)
+
+    results = all_rows[skip: skip + limit]
 
     return {
         "total": total,
+        "stats": {
+            "active_count": active_count,
+            "unique_classes": unique_classes,
+            "fee_pending_count": fee_pending_count,
+        },
         "students": [
             {
                 "id": u.id,
