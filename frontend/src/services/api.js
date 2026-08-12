@@ -15,60 +15,46 @@ import toast from 'react-hot-toast'
 // is empty, undefined, or relative, it throws "Failed to construct 'URL'".
 
 export const getBaseURL = () => {
-  const RENDER_BACKEND = 'https://student-management-system-9yuf.onrender.com/api'
-
-  // 1 ─ Explicit env var from Vite/Render build-time injection
+  // 1 ─ Explicit env var from Vite build-time injection
   const raw = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim()
 
   if (raw && raw !== 'undefined' && raw !== 'null') {
-    // Already absolute
     if (/^https?:\/\//i.test(raw)) {
       return raw.replace(/\/api\/?$/, '') + '/api'
     }
   }
 
-  // 2 ─ Auto-detect from browser location
+  // 2 ─ Auto-detect from browser location (Vercel same-origin co-located app)
   if (typeof window !== 'undefined' && window.location) {
     const { hostname, protocol, port } = window.location
-
-    // Render-hosted frontend → talk directly to Render backend (same infra)
-    if (hostname && hostname.includes('onrender.com')) {
-      return RENDER_BACKEND
-    }
 
     // Local dev → Vite proxy forwards /api to localhost:8000
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8000/api'
     }
 
-    // Vercel / Netlify / custom domain → use same-origin /api which vercel.json
-    // proxies to the Render backend. This avoids CORS issues entirely.
+    // Vercel / custom domain → use same-origin /api served natively by Vercel Python Serverless
     if (protocol === 'https:' || protocol === 'http:') {
       const p = port ? `:${port}` : ''
       return `${protocol}//${hostname}${p}/api`
     }
   }
 
-  // 3 ─ Hard fallback
-  return RENDER_BACKEND
+  // 3 ─ Hard fallback for Vercel
+  return '/api'
 }
 
 // Resolve once — never changes for the lifetime of this module
 const BASE_URL = getBaseURL()
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
-// baseURL is set to an absolute URL so Axios 1.7.x can safely resolve
-// relative paths like "/auth/login" via combineURLs(), which is safe and
-// never calls `new URL()` with an empty/relative base.
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 })
 
 // ─── Request interceptor: ONLY attach auth token ─────────────────────────────
-// Do NOT manipulate config.url or config.baseURL here.
-// The baseURL is already correct from axios.create(); touching it causes the
-// "Failed to construct 'URL': Invalid URL" error in Axios 1.7.x internals.
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token')
   if (token) {
@@ -78,11 +64,29 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// ─── Response interceptor ────────────────────────────────────────────────────
+// ─── Response interceptor with Vercel Serverless Retry ───────────────────────
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const isLoginReq = error.config?.url?.includes('/auth/login')
+  async (error) => {
+    const config = error.config || {}
+    const isLoginReq = config.url?.includes('/auth/login')
+
+    // Handle Vercel Cold Start or Network Timeout (502, 504, ECONNABORTED, Network Error)
+    const isGatewayOrTimeout =
+      !error.response ||
+      error.response.status === 502 ||
+      error.response.status === 504 ||
+      error.code === 'ECONNABORTED' ||
+      error.message?.includes('Network Error')
+
+    if (isGatewayOrTimeout && !config._retried) {
+      config._retried = true
+      toast.loading('Connecting to Vercel API, retrying...', { id: 'vercel-retry-toast', duration: 3000 })
+
+      // Wait 2.5 seconds before retrying
+      await new Promise((resolve) => setTimeout(resolve, 2500))
+      return api(config)
+    }
 
     if (error.response?.status === 401 && !isLoginReq) {
       localStorage.removeItem('access_token')

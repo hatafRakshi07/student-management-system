@@ -89,28 +89,63 @@ def filter_student_query_for_teacher(query, current_user: User, db: Session):
     ]
     
     # Department keyword fallbacks
-    dept_lower = dept.lower()
-    if "computer" in dept_lower:
+    if "computer" in dept_lower or "bca" in dept_lower:
         dept_filters.extend([
             StudentProfile.class_name.ilike("%bca%"),
             StudentProfile.class_name.ilike("%b.c.a%"),
             StudentProfile.department.ilike("%computer%"),
-            StudentProfile.department.ilike("%Computer Applications%"),
+            StudentProfile.department.ilike("%applications%"),
+            StudentProfile.department.ilike("%Computer Applications%")
         ])
     elif "humanities" in dept_lower or "arts" in dept_lower:
-        dept_filters.extend([StudentProfile.class_name.ilike("%b.a%"), StudentProfile.class_name.ilike("%arts%"), StudentProfile.department.ilike("%humanities%")])
+        dept_filters.extend([
+            StudentProfile.class_name.ilike("%b.a%"),
+            StudentProfile.class_name.ilike("%ba%"),
+            StudentProfile.class_name.ilike("%arts%"),
+            StudentProfile.department.ilike("%humanities%")
+        ])
     elif "home science" in dept_lower:
-        dept_filters.extend([StudentProfile.class_name.ilike("%home science%"), StudentProfile.department.ilike("%home%")])
+        dept_filters.extend([
+            StudentProfile.class_name.ilike("%home science%"),
+            StudentProfile.department.ilike("%home%")
+        ])
     elif "drawing" in dept_lower:
-        dept_filters.extend([StudentProfile.class_name.ilike("%drawing%"), StudentProfile.department.ilike("%painting%")])
+        dept_filters.extend([
+            StudentProfile.class_name.ilike("%drawing%"),
+            StudentProfile.department.ilike("%painting%")
+        ])
     elif "science" in dept_lower:
-        dept_filters.extend([StudentProfile.class_name.ilike("%b.sc%"), StudentProfile.department.ilike("%science%")])
+        dept_filters.extend([
+            StudentProfile.class_name.ilike("%b.sc%"),
+            StudentProfile.class_name.ilike("%bsc%"),
+            StudentProfile.department.ilike("%science%")
+        ])
 
     query = query.filter(or_(*dept_filters))
 
     # 2. Course Boundary (If specific courses assigned)
     if courses:
-        course_clauses = [StudentProfile.class_name.ilike(f"%{c}%") for c in courses]
+        course_clauses = []
+        for c in courses:
+            course_clauses.append(StudentProfile.class_name.ilike(f"%{c}%"))
+            clean_c = c.replace(".", "").strip()
+            if clean_c != c:
+                course_clauses.append(StudentProfile.class_name.ilike(f"%{clean_c}%"))
+            if "bca" in c.lower():
+                course_clauses.extend([
+                    StudentProfile.class_name.ilike("%bca%"),
+                    StudentProfile.class_name.ilike("%b.c.a%")
+                ])
+            elif "ba" in c.lower():
+                course_clauses.extend([
+                    StudentProfile.class_name.ilike("%ba%"),
+                    StudentProfile.class_name.ilike("%b.a%")
+                ])
+            elif "bsc" in c.lower() or "b.sc" in c.lower():
+                course_clauses.extend([
+                    StudentProfile.class_name.ilike("%b.sc%"),
+                    StudentProfile.class_name.ilike("%bsc%")
+                ])
         query = query.filter(or_(*course_clauses))
 
     return query
