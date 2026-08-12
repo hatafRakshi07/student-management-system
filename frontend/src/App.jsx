@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -10,64 +10,66 @@ import SplashScreen from './components/common/SplashScreen'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import PWAInstallBanner from './components/common/PWAInstallBanner'
 
-
+// Auth pages — eager (always needed on first load)
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
 
-import StudentDashboard from './pages/student/Dashboard'
-import Attendance from './pages/student/Attendance'
-import Exams from './pages/student/Exams'
-import Assignments from './pages/student/Assignments'
-import Fees from './pages/student/Fees'
-import AIInsights from './pages/student/AIInsights'
-import Leaves from './pages/student/Leaves'
-import Timetable from './pages/student/Timetable'
-import Calendar from './pages/student/Calendar'
+// All other pages — lazy loaded (each becomes its own JS chunk)
+const StudentDashboard      = lazy(() => import('./pages/student/Dashboard'))
+const Attendance            = lazy(() => import('./pages/student/Attendance'))
+const Exams                 = lazy(() => import('./pages/student/Exams'))
+const Assignments           = lazy(() => import('./pages/student/Assignments'))
+const Fees                  = lazy(() => import('./pages/student/Fees'))
+const AIInsights            = lazy(() => import('./pages/student/AIInsights'))
+const Leaves                = lazy(() => import('./pages/student/Leaves'))
+const Timetable             = lazy(() => import('./pages/student/Timetable'))
+const Calendar              = lazy(() => import('./pages/student/Calendar'))
+const StudentLMS            = lazy(() => import('./pages/student/StudentLMS'))
 
-import TeacherDashboard from './pages/teacher/Dashboard'
-import AttendanceManagement from './pages/teacher/AttendanceManagement'
-import AssignmentManagement from './pages/teacher/AssignmentManagement'
-import MarksManagement from './pages/teacher/MarksManagement'
-import TeacherAnalytics from './pages/teacher/Analytics'
-import PracticalManagement from './pages/teacher/PracticalManagement'
-import LeaveManagement from './pages/teacher/LeaveManagement'
+const TeacherDashboard      = lazy(() => import('./pages/teacher/Dashboard'))
+const AttendanceManagement  = lazy(() => import('./pages/teacher/AttendanceManagement'))
+const AssignmentManagement  = lazy(() => import('./pages/teacher/AssignmentManagement'))
+const MarksManagement       = lazy(() => import('./pages/teacher/MarksManagement'))
+const TeacherAnalytics      = lazy(() => import('./pages/teacher/Analytics'))
+const PracticalManagement   = lazy(() => import('./pages/teacher/PracticalManagement'))
+const LeaveManagement       = lazy(() => import('./pages/teacher/LeaveManagement'))
 
-import AdminDashboard from './pages/admin/Dashboard'
-import StudentManagement from './pages/admin/StudentManagement'
-import TeacherManagement from './pages/admin/TeacherManagement'
-import FeeManagement from './pages/admin/FeeManagement'
-import TimetableManagement from './pages/admin/TimetableManagement'
-import AdminAnalytics from './pages/admin/Analytics'
-import ImportModule from './pages/admin/ImportModule'
-import FinancialReports from './pages/admin/FinancialReports'
-import StaffAttendance from './pages/staff/StaffAttendance'
-import AdminAttendance from './pages/admin/AdminAttendance'
-import AdminExamDashboard from './pages/admin/AdminExamDashboard'
-import AdminHRDashboard from './pages/admin/AdminHRDashboard'
-import ParentDashboard from './pages/parent/ParentDashboard'
-import AdminParentHub from './pages/admin/AdminParentHub'
-import AdminAcademicPlanner from './pages/admin/AdminAcademicPlanner'
-import AdminLibraryHub from './pages/admin/AdminLibraryHub'
-import StudentLMS from './pages/student/StudentLMS'
-import OnlineAdmission from './pages/public/OnlineAdmission'
-import AdminFinanceHub from './pages/admin/AdminFinanceHub'
-import AdminInventoryHub from './pages/admin/AdminInventoryHub'
-import AdminHostelHub from './pages/admin/AdminHostelHub'
-import AdminCertificateHub from './pages/admin/AdminCertificateHub'
-import DocumentVerification from './pages/public/DocumentVerification'
-import AdminPlacementHub from './pages/admin/AdminPlacementHub'
-import AdminResearchHub from './pages/admin/AdminResearchHub'
-import AdminAccreditationHub from './pages/admin/AdminAccreditationHub'
-import AdminBiometricHub from './pages/admin/AdminBiometricHub'
-import MobileAppHub from './pages/common/MobileAppHub'
-import AICampusAssistant from './pages/common/AICampusAssistant'
-import AdminPredictiveAnalytics from './pages/admin/AdminPredictiveAnalytics'
-import SuperAdminTenantHub from './pages/admin/SuperAdminTenantHub'
-import DeveloperApiPortal from './pages/common/DeveloperApiPortal'
+const AdminDashboard        = lazy(() => import('./pages/admin/Dashboard'))
+const StudentManagement     = lazy(() => import('./pages/admin/StudentManagement'))
+const TeacherManagement     = lazy(() => import('./pages/admin/TeacherManagement'))
+const FeeManagement         = lazy(() => import('./pages/admin/FeeManagement'))
+const TimetableManagement   = lazy(() => import('./pages/admin/TimetableManagement'))
+const AdminAnalytics        = lazy(() => import('./pages/admin/Analytics'))
+const ImportModule          = lazy(() => import('./pages/admin/ImportModule'))
+const FinancialReports      = lazy(() => import('./pages/admin/FinancialReports'))
+const AdminAttendance       = lazy(() => import('./pages/admin/AdminAttendance'))
+const AdminExamDashboard    = lazy(() => import('./pages/admin/AdminExamDashboard'))
+const AdminHRDashboard      = lazy(() => import('./pages/admin/AdminHRDashboard'))
+const AdminParentHub        = lazy(() => import('./pages/admin/AdminParentHub'))
+const AdminAcademicPlanner  = lazy(() => import('./pages/admin/AdminAcademicPlanner'))
+const AdminLibraryHub       = lazy(() => import('./pages/admin/AdminLibraryHub'))
+const AdminFinanceHub       = lazy(() => import('./pages/admin/AdminFinanceHub'))
+const AdminInventoryHub     = lazy(() => import('./pages/admin/AdminInventoryHub'))
+const AdminHostelHub        = lazy(() => import('./pages/admin/AdminHostelHub'))
+const AdminCertificateHub   = lazy(() => import('./pages/admin/AdminCertificateHub'))
+const AdminPlacementHub     = lazy(() => import('./pages/admin/AdminPlacementHub'))
+const AdminResearchHub      = lazy(() => import('./pages/admin/AdminResearchHub'))
+const AdminAccreditationHub = lazy(() => import('./pages/admin/AdminAccreditationHub'))
+const AdminBiometricHub     = lazy(() => import('./pages/admin/AdminBiometricHub'))
+const AdminPredictiveAnalytics = lazy(() => import('./pages/admin/AdminPredictiveAnalytics'))
+const SuperAdminTenantHub   = lazy(() => import('./pages/admin/SuperAdminTenantHub'))
 
-import Notices from './pages/common/Notices'
-import Profile from './pages/common/Profile'
+const StaffAttendance       = lazy(() => import('./pages/staff/StaffAttendance'))
+const ParentDashboard       = lazy(() => import('./pages/parent/ParentDashboard'))
+const OnlineAdmission       = lazy(() => import('./pages/public/OnlineAdmission'))
+const DocumentVerification  = lazy(() => import('./pages/public/DocumentVerification'))
+
+const Notices               = lazy(() => import('./pages/common/Notices'))
+const Profile               = lazy(() => import('./pages/common/Profile'))
+const MobileAppHub          = lazy(() => import('./pages/common/MobileAppHub'))
+const AICampusAssistant     = lazy(() => import('./pages/common/AICampusAssistant'))
+const DeveloperApiPortal    = lazy(() => import('./pages/common/DeveloperApiPortal'))
 
 function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth()
@@ -86,6 +88,7 @@ function PublicRoute({ children }) {
 
 function AppRoutes() {
   return (
+    <Suspense fallback={<FullPageLoader />}>
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -158,6 +161,7 @@ function AppRoutes() {
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
+    </Suspense>
   )
 }
 export default function App() {

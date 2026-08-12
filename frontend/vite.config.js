@@ -64,6 +64,17 @@ export default defineConfig({
   build: {
     sourcemap: false,
     chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        // Split heavy vendor libs into separate cached chunks
+        manualChunks: {
+          'vendor-react':   ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts':  ['recharts'],
+          'vendor-ui':      ['lucide-react', 'react-hot-toast'],
+          'vendor-axios':   ['axios'],
+        },
+      },
+    },
   },
 })
 
