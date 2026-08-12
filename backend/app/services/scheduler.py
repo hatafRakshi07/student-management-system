@@ -32,7 +32,7 @@ def _check_low_attendance_job() -> None:
                 continue
             present = db.query(func.count(Attendance.id)).filter(
                 Attendance.student_id == student.id,
-                Attendance.status.in_([AttendanceStatus.present, AttendanceStatus.late]),
+                Attendance.status.in_(["present", "late", "PRESENT", "LATE"]),
             ).scalar() or 0
             pct = round((present / total) * 100, 2)
             if pct < 75:

@@ -29,7 +29,7 @@ def _get_student_stats(student_id: int, db: Session) -> dict:
     ).scalar() or 0
     present = db.query(func.count(Attendance.id)).filter(
         Attendance.student_id == student_id,
-        Attendance.status.in_([AttendanceStatus.present, AttendanceStatus.late]),
+        Attendance.status.in_(["present", "late", "PRESENT", "LATE"]),
     ).scalar() or 0
     att_pct = round((present / total) * 100, 2) if total > 0 else 0.0
 

@@ -31,12 +31,18 @@ export function NotificationProvider({ children }) {
       let wsUrl = ''
       try {
         const apiBase = getBaseURL()
-        // apiBase is always an absolute http(s):// URL (e.g. https://student-management-system-9yuf.onrender.com/api)
         const parsedApi = new URL(apiBase)
-        const wsProto = parsedApi.protocol === 'https:' ? 'wss:' : 'ws:'
-        wsUrl = `${wsProto}//${parsedApi.host}/ws/${user.id}`
+        // Vercel serverless platform cannot handle persistent WebSockets.
+        // Direct WebSockets to the persistent Render backend or local dev server.
+        if (parsedApi.host.includes('vercel.app')) {
+          wsUrl = `wss://student-management-system-9yuf.onrender.com/ws/${user.id}`
+        } else if (parsedApi.host === 'localhost' || parsedApi.host === '127.0.0.1') {
+          wsUrl = `ws://${parsedApi.host}:8000/ws/${user.id}`
+        } else {
+          const wsProto = parsedApi.protocol === 'https:' ? 'wss:' : 'ws:'
+          wsUrl = `${wsProto}//${parsedApi.host}/ws/${user.id}`
+        }
       } catch {
-        // Hard fallback: use known Render backend directly
         wsUrl = `wss://student-management-system-9yuf.onrender.com/ws/${user.id}`
       }
 

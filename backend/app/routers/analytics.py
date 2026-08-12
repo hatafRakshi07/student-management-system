@@ -228,7 +228,7 @@ def student_analytics(student_id: int, _=Depends(require_teacher_or_admin), db: 
     ).scalar() or 0
     present = db.query(func.count(Attendance.id)).filter(
         Attendance.student_id == student_id,
-        Attendance.status.in_([AttendanceStatus.present, AttendanceStatus.late]),
+        Attendance.status.in_(["present", "late", "PRESENT", "LATE"]),
     ).scalar() or 0
     att_pct = round((present / total) * 100, 2) if total > 0 else 0.0
 
@@ -271,7 +271,7 @@ def attendance_forecast(
             Attendance.date,
             func.count(Attendance.id).label("total"),
             func.sum(case(
-                (Attendance.status.in_([AttendanceStatus.present, AttendanceStatus.late]), 1),
+                (Attendance.status.in_(["present", "late", "PRESENT", "LATE"]), 1),
                 else_=0,
             )).label("present"),
         )
@@ -310,7 +310,7 @@ def student_clusters(
         db.query(
             Attendance.student_id.label("sid"),
             (func.sum(case(
-                (Attendance.status.in_([AttendanceStatus.present, AttendanceStatus.late]), 1),
+                (Attendance.status.in_(["present", "late", "PRESENT", "LATE"]), 1),
                 else_=0,
             )) * 100.0 / func.nullif(func.count(Attendance.id), 0)).label("att_pct"),
         )

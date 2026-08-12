@@ -14,8 +14,22 @@ class StudentAttendanceStatus(str, enum.Enum):
     HOLIDAY = "HOLIDAY"
     HALF_DAY = "HALF_DAY"
 
-# Backward compatibility alias
-AttendanceStatus = StudentAttendanceStatus
+# Backward compatibility class mapping both uppercase and lowercase attributes
+class AttendanceStatus:
+    PRESENT = StudentAttendanceStatus.PRESENT
+    ABSENT = StudentAttendanceStatus.ABSENT
+    LATE = StudentAttendanceStatus.LATE
+    LEAVE = StudentAttendanceStatus.LEAVE
+    MEDICAL_LEAVE = StudentAttendanceStatus.MEDICAL_LEAVE
+    HOLIDAY = StudentAttendanceStatus.HOLIDAY
+    HALF_DAY = StudentAttendanceStatus.HALF_DAY
+
+    present = "present"
+    absent = "absent"
+    late = "late"
+    leave = "leave"
+    holiday = "holiday"
+    half_day = "half_day"
 
 
 class StaffAttendanceStatus(str, enum.Enum):
