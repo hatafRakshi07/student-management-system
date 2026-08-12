@@ -59,12 +59,12 @@ const navGroups = {
       { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
     ]},
     { label: 'People', items: [
-      { to: '/admin/students', label: 'Students', icon: GraduationCap, badge: '755' },
+      { to: '/admin/students', label: 'Students', icon: GraduationCap },
       { to: '/admin/teachers', label: 'Faculty & Teachers', icon: Users },
       { to: '/admin/hr', label: 'HR & Payroll', icon: Briefcase },
     ]},
     { label: 'Finance', items: [
-      { to: '/admin/fees', label: 'Fee ERP', icon: DollarSign, badge: '2527' },
+      { to: '/admin/fees', label: 'Fee ERP', icon: DollarSign },
       { to: '/admin/import', label: 'Data Import', icon: Database },
     ]},
     { label: 'Academic', items: [
