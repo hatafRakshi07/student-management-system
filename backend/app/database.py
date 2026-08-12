@@ -44,19 +44,27 @@ def _init_engine():
     # For PostgreSQL / Supabase
     if not db_url.startswith("sqlite"):
         try:
-            eng = create_engine(
-                db_url,
-                pool_pre_ping=True,
-                pool_recycle=300,
-                pool_size=5,
-                max_overflow=10,
-                future=True,
-                connect_args={
-                    "connect_timeout": 3,
-                    "sslmode": "require",
-                },
-                echo=False,
-            )
+            # Serverless (Vercel): use NullPool to avoid leaking connections across invocations
+            if is_vercel:
+                from sqlalchemy.pool import NullPool
+                eng = create_engine(
+                    db_url,
+                    poolclass=NullPool,
+                    future=True,
+                    connect_args={"connect_timeout": 5, "sslmode": "require"},
+                    echo=False,
+                )
+            else:
+                eng = create_engine(
+                    db_url,
+                    pool_pre_ping=True,
+                    pool_recycle=300,
+                    pool_size=5,
+                    max_overflow=10,
+                    future=True,
+                    connect_args={"connect_timeout": 3, "sslmode": "require"},
+                    echo=False,
+                )
             with eng.connect() as conn:
                 conn.execute(text("SELECT 1"))
             print("Successfully connected to PostgreSQL database.")

@@ -587,3 +587,177 @@ def get_student_attendance_summary(
         "attendance_percentage": pct,
         "summary": "EXCELLENT" if pct >= 75 else "WARNING"
     }
+
+
+@router.get("/history/student/{student_id}")
+def get_student_attendance_history(
+    student_id: int,
+    limit: int = 90,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Date-wise attendance history for a student. Accessible by teacher, admin, and parent."""
+    if current_user.role == UserRole.student and current_user.id != student_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    sp = db.query(StudentProfile).filter(StudentProfile.user_id == student_id).first()
+    u = db.query(User).filter(User.id == student_id).first()
+
+    # Fetch from StudentAttendanceRecord (new) + fallback to legacy Attendance table
+    new_records = db.query(StudentAttendanceRecord).filter(
+        StudentAttendanceRecord.student_id == student_id
+    ).order_by(StudentAttendanceRecord.date.desc()).limit(limit).all()
+
+    if new_records:
+        records_out = [{
+            "date": r.date.strftime("%d-%m-%Y"),
+            "date_raw": str(r.date),
+            "day": r.date.strftime("%a"),
+            "status": r.status.value if hasattr(r.status, "value") else str(r.status),
+            "subject": r.subject.name if r.subject else "General",
+            "lecture_no": r.lecture_no,
+            "remarks": r.remarks or ""
+        } for r in new_records]
+    else:
+        # Fallback legacy table
+        legacy = db.query(Attendance).filter(
+            Attendance.student_id == student_id
+        ).order_by(Attendance.date.desc()).limit(limit).all()
+        records_out = [{
+            "date": r.date.strftime("%d-%m-%Y") if hasattr(r.date, "strftime") else str(r.date),
+            "date_raw": str(r.date),
+            "day": r.date.strftime("%a") if hasattr(r.date, "strftime") else "",
+            "status": r.status.value if hasattr(r.status, "value") else str(r.status),
+            "subject": "General",
+            "lecture_no": 1,
+            "remarks": ""
+        } for r in legacy]
+
+    total = len(records_out)
+    present = sum(1 for r in records_out if r["status"].upper() in ("PRESENT", "LATE"))
+    absent = sum(1 for r in records_out if r["status"].upper() == "ABSENT")
+    pct = round(present / total * 100, 1) if total > 0 else 0.0
+
+    return {
+        "student_id": student_id,
+        "student_name": (u.full_name if u else None) or (sp.student_name if sp else f"Student #{student_id}"),
+        "roll_number": sp.roll_number if sp else None,
+        "class_name": sp.class_name if sp else None,
+        "total": total,
+        "present": present,
+        "absent": absent,
+        "percentage": pct,
+        "records": records_out
+    }
+
+
+@router.get("/staff/admin/list")
+def get_staff_attendance_for_admin(
+    attendance_date: Optional[str] = None,
+    _=Depends(require_teacher_or_admin),
+    db: Session = Depends(get_db)
+):
+    """Admin: List all teachers/staff with attendance status for a given date."""
+    q_date = date.today()
+    if attendance_date:
+        try:
+            q_date = datetime.strptime(attendance_date, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
+    from app.models.teacher import TeacherProfile as TP
+    # Single JOIN query — fetches users + teacher profiles + today's attendance in 2 queries
+    rows = (
+        db.query(User, TP)
+        .outerjoin(TP, User.id == TP.user_id)
+        .filter(User.role.in_([UserRole.teacher, UserRole.admin]), User.is_active == True)
+        .order_by(User.full_name.asc())
+        .all()
+    )
+
+    # Bulk-fetch all attendance records for today in one query
+    user_ids = [u.id for u, _ in rows]
+    att_map = {
+        r.staff_id: r
+        for r in db.query(StaffAttendanceRecord).filter(
+            StaffAttendanceRecord.staff_id.in_(user_ids),
+            StaffAttendanceRecord.date == q_date
+        ).all()
+    }
+
+    result = []
+    for su, tp in rows:
+        rec = att_map.get(su.id)
+        status_val = (rec.status.value if hasattr(rec.status, "value") else str(rec.status)) if rec else "NOT_MARKED"
+        result.append({
+            "user_id": su.id,
+            "full_name": su.full_name,
+            "role": su.role.value if hasattr(su.role, "value") else str(su.role),
+            "department": tp.department if tp else "Administration",
+            "designation": tp.designation if tp else "Staff",
+            "check_in": rec.check_in_time.strftime("%I:%M %p") if rec and rec.check_in_time else None,
+            "check_out": rec.check_out_time.strftime("%I:%M %p") if rec and rec.check_out_time else None,
+            "working_hours": rec.working_hours if rec else 0.0,
+            "is_late": rec.is_late if rec else False,
+            "status": status_val,
+            "remarks": rec.remarks if rec else ""
+        })
+
+    present = sum(1 for r in result if r["status"] in ("PRESENT", "LATE"))
+    absent = sum(1 for r in result if r["status"] == "ABSENT")
+    return {
+        "date": q_date.strftime("%d-%m-%Y"),
+        "date_raw": str(q_date),
+        "total": len(result),
+        "present": present,
+        "absent": absent,
+        "not_marked": len(result) - present - absent,
+        "staff": result
+    }
+
+
+@router.post("/staff/admin/mark")
+def admin_mark_staff_attendance(
+    payload: Dict[str, Any],
+    _=Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Admin marks or updates a staff member's attendance for a date."""
+    staff_id = payload.get("user_id")
+    status_str = payload.get("status", "PRESENT").upper()
+    attendance_date_str = payload.get("date", str(date.today()))
+    remarks = payload.get("remarks", "")
+
+    try:
+        att_date = datetime.strptime(attendance_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        att_date = date.today()
+
+    try:
+        status_enum = StaffAttendanceStatus(status_str)
+    except ValueError:
+        status_enum = StaffAttendanceStatus.PRESENT
+
+    rec = db.query(StaffAttendanceRecord).filter(
+        StaffAttendanceRecord.staff_id == staff_id,
+        StaffAttendanceRecord.date == att_date
+    ).first()
+
+    if rec:
+        rec.status = status_enum
+        rec.remarks = remarks
+    else:
+        rec = StaffAttendanceRecord(
+            staff_id=staff_id,
+            date=att_date,
+            status=status_enum,
+            is_late=(status_enum == StaffAttendanceStatus.LATE),
+            remarks=remarks,
+            created_at=datetime.utcnow()
+        )
+        db.add(rec)
+
+    db.commit()
+    recalculate_staff_attendance_summary(db, staff_id)
+    db.commit()
+    return {"message": "Staff attendance marked successfully", "status": status_enum.value}

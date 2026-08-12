@@ -21,17 +21,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [warming, setWarming] = useState(false)
-
-  // Wake up Render backend on first load (free tier sleeps after 15 min)
-  useEffect(() => {
-    const warmedKey = 'backend_warmed'
-    if (sessionStorage.getItem(warmedKey)) return
-    setWarming(true)
-    authAPI.ping()
-      .catch(() => {})
-      .finally(() => { setWarming(false); sessionStorage.setItem(warmedKey, '1') })
-  }, [])
+  const [warming] = useState(false)
 
   const validate = () => {
     if (!form.email.trim() || !form.password) return 'Please fill all fields'

@@ -1,15 +1,21 @@
 import React, { useEffect, useState } from 'react'
-import { studentAPI } from '../../services/api'
+import { studentAPI, attendanceAPI } from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 import { CheckCircle2, XCircle, Clock, TrendingUp } from 'lucide-react'
 
 export default function Attendance() {
+  const { user } = useAuth()
   const [data, setData] = useState(null)
+  const [history, setHistory] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     studentAPI.attendance().then(r => { setData(r.data); setLoading(false) }).catch(() => setLoading(false))
-  }, [])
+    if (user?.id) {
+      attendanceAPI.studentHistory(user.id).then(r => setHistory(r.data)).catch(() => {})
+    }
+  }, [user?.id])
 
   if (loading) return (
     <div className="flex justify-center py-20">
@@ -99,28 +105,36 @@ export default function Attendance() {
             <thead>
               <tr>
                 <th>Date</th>
+                <th>Day</th>
                 <th>Subject</th>
                 <th>Status</th>
+                <th>Remarks</th>
               </tr>
             </thead>
             <tbody>
-              {(data?.records || []).slice(0, 30).map((r, i) => (
-                <tr key={i}>
-                  <td className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-                    {new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                  </td>
-                  <td className="text-sm text-gray-500 dark:text-gray-400">
-                    {r.subject_id ? `Subject ${r.subject_id}` : 'General'}
-                  </td>
-                  <td>
-                    <span className={`badge ${r.status === 'present' ? 'badge-green' : r.status === 'late' ? 'badge-yellow' : 'badge-red'}`}>
-                      {r.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {!(data?.records?.length) && (
-                <tr><td colSpan={3} className="text-center text-gray-400 py-6 text-sm">No records found.</td></tr>
+              {(history?.records || (data?.records || []).slice(0, 60)).map((r, i) => {
+                const status = (r.status || '').toUpperCase()
+                return (
+                  <tr key={i}>
+                    <td className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                      {r.date || (r.date_raw ? r.date_raw : new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }))}
+                    </td>
+                    <td className="text-xs text-gray-400">{r.day || ''}</td>
+                    <td className="text-xs text-gray-500">{r.subject || (r.subject_id ? `Subject ${r.subject_id}` : 'General')}</td>
+                    <td>
+                      <span className={`badge ${
+                        status === 'PRESENT' ? 'badge-green' :
+                        status === 'LATE'    ? 'badge-yellow' :
+                        status === 'LEAVE'   ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full text-xs font-bold' :
+                                              'badge-red'
+                      }`}>{status || r.status}</span>
+                    </td>
+                    <td className="text-xs text-gray-400">{r.remarks || '—'}</td>
+                  </tr>
+                )
+              })}
+              {!(history?.records?.length || data?.records?.length) && (
+                <tr><td colSpan={5} className="text-center text-gray-400 py-6 text-sm">No records found.</td></tr>
               )}
             </tbody>
           </table>

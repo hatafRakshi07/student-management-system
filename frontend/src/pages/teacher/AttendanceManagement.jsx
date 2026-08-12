@@ -4,7 +4,7 @@ import { attendanceAPI, teacherAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import {
   Calendar, CheckCircle, XCircle, Clock, Save, Filter, Users, AlertCircle,
-  ShieldCheck, Lock, Check, Send, Sparkles, RefreshCw
+  ShieldCheck, Lock, Check, Send, Sparkles, RefreshCw, History, ChevronDown, ChevronRight
 } from 'lucide-react'
 
 export default function AttendanceManagement() {
@@ -44,7 +44,9 @@ export default function AttendanceManagement() {
       })
 
       if (data.courses?.length) {
-        setSelectedCourse(data.courses[0])
+        // Prefer the primary course that matches actual student data; default BCA for Computer Science
+        const primary = data.courses.find(c => /^bca$/i.test(c.replace(/\./g, ''))) || data.courses[0]
+        setSelectedCourse(primary)
       }
     } catch {
       // Fallback defaults for teacher
@@ -141,6 +143,28 @@ export default function AttendanceManagement() {
   const absentCount = Object.values(studentStatusMap).filter(v => v === 'ABSENT').length
   const leaveCount = Object.values(studentStatusMap).filter(v => v === 'LEAVE').length
 
+  const [activeTab, setActiveTab] = useState('mark') // 'mark' | 'history'
+  const [historySearch, setHistorySearch] = useState('')
+  const [expandedStudent, setExpandedStudent] = useState(null)
+  const [historyData, setHistoryData] = useState({})
+  const [historyLoading, setHistoryLoading] = useState(false)
+
+  const loadStudentHistory = async (studentId) => {
+    if (historyData[studentId]) { setExpandedStudent(expandedStudent === studentId ? null : studentId); return }
+    setHistoryLoading(true)
+    try {
+      const res = await attendanceAPI.studentHistory(studentId)
+      setHistoryData(prev => ({ ...prev, [studentId]: res.data }))
+      setExpandedStudent(studentId)
+    } catch { toast.error('Failed to load history') }
+    finally { setHistoryLoading(false) }
+  }
+
+  const filteredStudents = students.filter(s =>
+    (s.full_name || s.student_name || '').toLowerCase().includes(historySearch.toLowerCase()) ||
+    (s.roll_number || '').toLowerCase().includes(historySearch.toLowerCase())
+  )
+
   return (
     <div className="space-y-6 animate-page max-w-6xl mx-auto">
       {/* Title & Info Banner */}
@@ -154,30 +178,26 @@ export default function AttendanceManagement() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => markAll('PRESENT')}
-            className="btn-secondary text-xs flex items-center gap-1.5 font-bold"
-          >
-            <CheckCircle className="w-4 h-4 text-emerald-600" /> Mark All Present
+        {/* Tab switcher */}
+        <div className="flex gap-2">
+          <button onClick={() => setActiveTab('mark')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors ${
+              activeTab === 'mark' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+            }`}>
+            <Check className="w-3.5 h-3.5" /> Mark Attendance
           </button>
-          <button
-            onClick={() => markAll('ABSENT')}
-            className="btn-secondary text-xs flex items-center gap-1.5 font-bold"
-          >
-            <XCircle className="w-4 h-4 text-red-600" /> Mark All Absent
-          </button>
-          <button
-            onClick={loadClassStudents}
-            className="btn-secondary text-xs flex items-center gap-1.5"
-            title="Reload Students"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <button onClick={() => setActiveTab('history')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors ${
+              activeTab === 'history' ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+            }`}>
+            <History className="w-3.5 h-3.5" /> Student History
           </button>
         </div>
       </div>
 
-      {/* ── ATTENDANCE SELECTION CONTROL PANEL ──────────────────────────────── */}
+      {activeTab === 'mark' && (
+      <div className="space-y-6">
+
       <div className="card p-5 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl shadow-xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Read-Only Teacher */}
@@ -397,6 +417,105 @@ export default function AttendanceManagement() {
           </button>
         </div>
       </div>
+      </div>)}
+
+      {activeTab === 'history' && (
+        <div className="card">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <History className="w-5 h-5 text-primary-600" /> Student Attendance History
+            </h2>
+            <input
+              className="input sm:w-64 text-sm"
+              placeholder="Search by name or roll no…"
+              value={historySearch}
+              onChange={e => setHistorySearch(e.target.value)}
+            />
+          </div>
+
+          {!students.length && (
+            <p className="text-center text-gray-400 py-8 text-sm">No students loaded. Select a course and year in Mark Attendance tab first.</p>
+          )}
+
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            {filteredStudents.map((s, idx) => {
+              const h = historyData[s.id]
+              const isOpen = expandedStudent === s.id
+              const pct = h?.percentage ?? null
+              return (
+                <div key={s.id}>
+                  <div
+                    className="flex items-center justify-between py-3 px-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg"
+                    onClick={() => loadStudentHistory(s.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 text-xs text-gray-400 font-bold text-center">{idx + 1}</span>
+                      <div>
+                        <p className="font-bold text-sm text-gray-900 dark:text-white">{s.full_name || s.student_name}</p>
+                        <p className="text-xs text-gray-400">{s.roll_number} · {s.class_name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {pct !== null && (
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                          pct >= 75 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>{pct}%</span>
+                      )}
+                      {historyLoading && expandedStudent !== s.id
+                        ? null
+                        : isOpen
+                          ? <ChevronDown className="w-4 h-4 text-gray-400" />
+                          : <ChevronRight className="w-4 h-4 text-gray-400" />
+                      }
+                    </div>
+                  </div>
+
+                  {isOpen && h && (
+                    <div className="ml-9 mb-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
+                      <div className="flex gap-4 mb-3 text-xs">
+                        <span className="font-bold text-emerald-600">Present: {h.present}</span>
+                        <span className="font-bold text-red-600">Absent: {h.absent}</span>
+                        <span className="font-bold text-gray-500">Total: {h.total}</span>
+                        <span className={`font-black ${h.percentage >= 75 ? 'text-emerald-700' : 'text-red-700'}`}>{h.percentage}%</span>
+                      </div>
+                      {h.records?.length > 0 ? (
+                        <div className="table-container max-h-48 overflow-y-auto">
+                          <table className="w-full text-xs">
+                            <thead><tr className="text-gray-500 text-left border-b border-gray-200 dark:border-gray-600">
+                              <th className="pb-1 pr-3">Date</th>
+                              <th className="pb-1 pr-3">Day</th>
+                              <th className="pb-1 pr-3">Subject</th>
+                              <th className="pb-1">Status</th>
+                            </tr></thead>
+                            <tbody>{h.records.map((r, i) => (
+                              <tr key={i} className="border-b border-gray-100 dark:border-gray-700">
+                                <td className="py-1 pr-3 font-medium">{r.date}</td>
+                                <td className="py-1 pr-3 text-gray-500">{r.day}</td>
+                                <td className="py-1 pr-3 text-gray-500">{r.subject}</td>
+                                <td className="py-1">
+                                  <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                    r.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' :
+                                    r.status === 'LATE'    ? 'bg-yellow-100 text-yellow-700' :
+                                    r.status === 'LEAVE'   ? 'bg-blue-100 text-blue-700' :
+                                                             'bg-red-100 text-red-700'
+                                  }`}>{r.status}</span>
+                                </td>
+                              </tr>
+                            ))}</tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400">No attendance records found yet.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -50,7 +50,7 @@ const BASE_URL = getBaseURL()
 // ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 60000,
+  timeout: 25000,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -64,9 +64,7 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-const DIRECT_BACKEND = 'https://student-management-system-9yuf.onrender.com/api'
-
-// ─── Response interceptor with Cold Start & Direct Backend Failover ──────────
+// ─── Response interceptor ─────────────────────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -74,14 +72,12 @@ api.interceptors.response.use(
     const isLoginReq = config.url?.includes('/auth/login')
 
     // Detect true offline (no WiFi, no mobile data)
-    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine
-    if (isOffline && !config._offlineToasted) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine && !config._offlineToasted) {
       config._offlineToasted = true
       toast.error('No internet connection. Please check your WiFi or mobile data.', { id: 'offline-toast', duration: 4000 })
       return Promise.reject(error)
     }
 
-    // Handle Vercel proxy timeout or server cold start (500, 502, 504, ECONNABORTED, ETIMEDOUT, Network Error, timeout)
     const isServerErrorOrTimeout =
       !error.response ||
       error.response?.status === 500 ||
@@ -94,20 +90,12 @@ api.interceptors.response.use(
 
     if (isServerErrorOrTimeout && !config._retried) {
       config._retried = true
-      config.timeout = 90000
+      config.timeout = 30000
       toast.loading('Connecting to server, retrying…', { id: 'backend-retry-toast', duration: 6000 })
-
-      // Fallback directly to backend if proxy returned 500/502/504 or timed out
-      if (config.baseURL !== DIRECT_BACKEND && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-        config.baseURL = DIRECT_BACKEND
-      }
-
-      // Wait 2 seconds before retrying
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
       return api(config)
     }
 
-    // After retry also failed — dismiss loading toast
     if (config._retried) {
       toast.dismiss('backend-retry-toast')
       if (!error.response) {
@@ -184,7 +172,10 @@ export const attendanceAPI = {
   submitSession: (data) => api.post('/attendance/session/submit', data),
   getClassStudents: (params) => api.get('/attendance/class-students', { params }),
   studentAttendance: (id) => api.get(`/attendance/student/${id}`),
+  studentHistory: (id) => api.get(`/attendance/history/student/${id}`),
   overview: (params) => api.get('/attendance/overview', { params }),
+  staffList: (date) => api.get('/attendance/staff/admin/list', { params: date ? { attendance_date: date } : {} }),
+  staffMark: (data) => api.post('/attendance/staff/admin/mark', data),
 }
 
 export const assignmentAPI = {

@@ -36,9 +36,6 @@ def list_staff_members(
     """
     List Staff Members Directory with Multi-Criteria Search & Filtering.
     """
-    # Ensure default payroll generation runs to seed staff profiles if empty
-    generate_monthly_payroll_disbursement(db, "August", 2026)
-
     q = db.query(StaffDetail, User)\
         .join(User, StaffDetail.user_id == User.id)
 

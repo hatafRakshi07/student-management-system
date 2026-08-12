@@ -38,10 +38,13 @@ def get_teacher_access_filter(current_user: User, db: Session) -> Dict[str, Any]
         TeacherCourseAssignment.status == "ACTIVE"
     ).all()
 
-    courses = list(set([a.course_name.strip() for a in assignments if a.course_name]))
-    years = list(set([a.year.strip() for a in assignments if a.year]))
-    sections = list(set([a.section.strip() for a in assignments if a.section and a.section != "All"]))
-    subjects = list(set([a.subject_name.strip() for a in assignments if a.subject_name]))
+    courses = sorted(set([a.course_name.strip() for a in assignments if a.course_name]),
+                     key=lambda c: (0 if c in ("BCA", "B.C.A", "B.C.A.") else
+                                    1 if c in ("BA", "B.A", "B.A.") else
+                                    2 if "B.Sc" in c else 3))
+    years = sorted(set([a.year.strip() for a in assignments if a.year]))
+    sections = sorted(set([a.section.strip() for a in assignments if a.section and a.section != "All"]))
+    subjects = sorted(set([a.subject_name.strip() for a in assignments if a.subject_name]))
 
     # Default course mapping based on primary department if no explicit assignments exist
     if not courses:

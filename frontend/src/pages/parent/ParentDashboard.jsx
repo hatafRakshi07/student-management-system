@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import api, { parentAPI, feeAPI, examAPI } from '../../services/api'
+import api, { parentAPI, feeAPI, examAPI, attendanceAPI } from '../../services/api'
 import toast from 'react-hot-toast'
 import ReceiptModal from '../../components/fees/ReceiptModal'
 import MarksheetModal from '../../components/exams/MarksheetModal'
@@ -9,6 +9,7 @@ export default function ParentDashboard() {
   const [data, setData] = useState(null)
   const [selectedStudentId, setSelectedStudentId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [attHistory, setAttHistory] = useState(null)
 
   // PTM Request Form Modal State
   const [ptmModalOpen, setPtmModalOpen] = useState(false)
@@ -29,8 +30,10 @@ export default function ParentDashboard() {
       const targetId = studentId || selectedStudentId
       const res = await parentAPI.dashboard(targetId)
       setData(res.data)
-      if (res.data.active_student) {
-        setSelectedStudentId(res.data.active_student.student_id)
+      const sid = res.data.active_student?.student_id
+      if (sid) {
+        setSelectedStudentId(sid)
+        attendanceAPI.studentHistory(sid).then(r => setAttHistory(r.data)).catch(() => {})
       }
     } catch {
       toast.error('Failed to load Parent Portal dashboard')
@@ -248,6 +251,50 @@ export default function ParentDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Attendance History */}
+      {attHistory && (
+        <div className="card p-5">
+          <h3 className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+            <Calendar className="w-4 h-4 text-primary-600" /> {active_student?.full_name}'s Attendance History
+            <span className={`ml-auto px-2.5 py-1 rounded-full text-xs font-black ${
+              attHistory.percentage >= 75 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+            }`}>{attHistory.percentage}% ({attHistory.present}/{attHistory.total})</span>
+          </h3>
+          <div className="table-container max-h-64 overflow-y-auto">
+            <table className="table w-full text-xs">
+              <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold">
+                <tr>
+                  <th className="p-2">Date</th>
+                  <th className="p-2">Day</th>
+                  <th className="p-2">Subject</th>
+                  <th className="p-2 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {attHistory.records?.slice(0, 45).map((r, i) => (
+                  <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                    <td className="p-2 font-medium">{r.date}</td>
+                    <td className="p-2 text-gray-500">{r.day}</td>
+                    <td className="p-2 text-gray-500">{r.subject}</td>
+                    <td className="p-2 text-center">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        r.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' :
+                        r.status === 'LATE'    ? 'bg-yellow-100 text-yellow-700' :
+                        r.status === 'LEAVE'   ? 'bg-blue-100 text-blue-700' :
+                                                 'bg-red-100 text-red-700'
+                      }`}>{r.status}</span>
+                    </td>
+                  </tr>
+                ))}
+                {!attHistory.records?.length && (
+                  <tr><td colSpan={4} className="py-6 text-center text-gray-400">No attendance records found yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* PTM Request Modal */}
       {ptmModalOpen && (
