@@ -64,27 +64,35 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// ─── Response interceptor with Vercel Serverless Retry ───────────────────────
+const DIRECT_BACKEND = 'https://student-management-system-9yuf.onrender.com/api'
+
+// ─── Response interceptor with Cold Start & Direct Backend Failover ──────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config || {}
     const isLoginReq = config.url?.includes('/auth/login')
 
-    // Handle Vercel Cold Start or Network Timeout (502, 504, ECONNABORTED, Network Error)
-    const isGatewayOrTimeout =
+    // Handle Vercel proxy timeout or server cold start (500, 502, 504, ECONNABORTED, Network Error)
+    const isServerErrorOrTimeout =
       !error.response ||
+      error.response.status === 500 ||
       error.response.status === 502 ||
       error.response.status === 504 ||
       error.code === 'ECONNABORTED' ||
       error.message?.includes('Network Error')
 
-    if (isGatewayOrTimeout && !config._retried) {
+    if (isServerErrorOrTimeout && !config._retried) {
       config._retried = true
-      toast.loading('Connecting to Vercel API, retrying...', { id: 'vercel-retry-toast', duration: 3000 })
+      toast.loading('Connecting to production backend, retrying...', { id: 'backend-retry-toast', duration: 4000 })
 
-      // Wait 2.5 seconds before retrying
-      await new Promise((resolve) => setTimeout(resolve, 2500))
+      // Fallback directly to backend if proxy returned 500/502/504
+      if (config.baseURL !== DIRECT_BACKEND) {
+        config.baseURL = DIRECT_BACKEND
+      }
+
+      // Wait 3 seconds before retrying
+      await new Promise((resolve) => setTimeout(resolve, 3000))
       return api(config)
     }
 

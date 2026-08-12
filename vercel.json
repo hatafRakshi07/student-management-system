@@ -20,11 +20,11 @@
   ],
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "source": "/api/:path*",
+      "destination": "https://student-management-system-9yuf.onrender.com/api/:path*"
     },
     {
-      "source": "/((?!api/|manifest\\.webmanifest|sw\\.js|assets/).*)",
+      "source": "/((?!manifest\\.webmanifest|sw\\.js|assets/).*)",
       "destination": "/index.html"
     }
   ]
