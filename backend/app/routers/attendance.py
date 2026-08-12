@@ -557,8 +557,9 @@ def get_attendance_reports(
                 "date": r.date.strftime("%d-%m-%Y"),
                 "check_in": r.check_in_time.strftime("%I:%M %p") if r.check_in_time else "-",
                 "check_out": r.check_out_time.strftime("%I:%M %p") if r.check_out_time else "-",
-                "working_hours": r.working_hours,
-                "is_late": r.is_late
+                "working_hours": r.working_hours or 0.0,
+                "is_late": r.is_late,
+                "status": "LATE" if r.is_late else ("PRESENT" if r.check_in_time else "ABSENT")
             } for r, u in records]
         }
 

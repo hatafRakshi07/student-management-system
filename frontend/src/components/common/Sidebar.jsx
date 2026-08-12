@@ -38,7 +38,8 @@ const navGroups = {
       { to: '/teacher', label: 'Dashboard', icon: LayoutDashboard, end: true },
     ]},
     { label: 'Academic', items: [
-      { to: '/teacher/attendance', label: 'Attendance', icon: UserCheck },
+      { to: '/teacher/attendance', label: 'Student Attendance', icon: UserCheck },
+      { to: '/staff/attendance', label: 'My Biometric Attendance', icon: Clock },
       { to: '/teacher/assignments', label: 'Assignments', icon: ClipboardList },
       { to: '/teacher/marks', label: 'Marks Management', icon: BookMarked },
       { to: '/teacher/practicals', label: 'Practicals', icon: FlaskConical },

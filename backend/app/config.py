@@ -68,8 +68,10 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = ""
 
-    # Gemini AI
-    gemini_api_key: str = ""
+    # AI Settings (NVIDIA & Gemini)
+    nvidia_api_key: str = os.getenv("NVIDIA_API_KEY", "")
+    nvidia_model: str = os.getenv("NVIDIA_MODEL", "nvidia/nemotron-3.5-lightning-30b-a3b")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
 
     # File Upload — defaults to /tmp/uploads on Vercel, relative uploads in local dev
     upload_dir: str = os.getenv("UPLOAD_DIR", _DEFAULT_UPLOAD_DIR)

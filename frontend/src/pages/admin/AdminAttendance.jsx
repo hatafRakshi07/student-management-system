@@ -170,9 +170,9 @@ export default function AdminAttendance() {
                 <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800 z-10 text-xs font-bold text-gray-700 dark:text-gray-300">
                   <tr>
                     <th className="p-3">Name</th>
-                    <th className="p-3">Scholar No / ID</th>
-                    <th className="p-3">Class / Date</th>
-                    <th className="p-3 text-center">Status / %</th>
+                    <th className="p-3">{reportType === 'staff-hours' ? 'Staff ID' : 'Scholar No'}</th>
+                    <th className="p-3">{reportType === 'staff-hours' ? 'Date & In/Out' : reportType === 'daily-register' ? 'Class' : 'Class / Department'}</th>
+                    <th className="p-3 text-center">{reportType === 'low-attendance' ? 'Attendance %' : 'Status / Hours'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs">
@@ -180,10 +180,25 @@ export default function AdminAttendance() {
                     <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                       <td className="p-3 font-bold text-gray-900 dark:text-white">{r.student_name || r.name || r.staff_name}</td>
                       <td className="p-3 text-gray-500 font-mono">{r.scholar_no || r.staff_id || '-'}</td>
-                      <td className="p-3">{r.class_name || r.date || '-'}</td>
+                      <td className="p-3">
+                        {reportType === 'staff-hours'
+                          ? <div><p className="font-semibold text-gray-800 dark:text-gray-200">{r.date}</p><p className="text-[10px] text-gray-400 font-mono">In: {r.check_in || '-'} | Out: {r.check_out || '-'}</p></div>
+                          : (r.class_name || r.date || '-')}
+                      </td>
                       <td className="p-3 text-center">
-                        <span className={`badge ${r.status === 'PRESENT' ? 'badge-green' : r.status === 'ABSENT' ? 'badge-red' : 'badge-amber'}`}>
-                          {r.status || `${r.percentage}%`}
+                        <span className={`badge ${
+                          r.status === 'PRESENT' ? 'badge-green' :
+                          r.status === 'ABSENT' ? 'badge-red' :
+                          r.status === 'LATE' ? 'badge-amber' :
+                          (r.percentage !== undefined && r.percentage !== null)
+                            ? (Number(r.percentage) < 75 ? 'badge-red' : 'badge-green')
+                            : 'badge-blue'
+                        }`}>
+                          {r.status
+                            ? `${r.status}${r.working_hours ? ` (${r.working_hours}h)` : ''}`
+                            : (r.percentage !== undefined && r.percentage !== null
+                              ? `${r.percentage}%`
+                              : (r.working_hours ? `${r.working_hours} hrs` : 'PRESENT'))}
                         </span>
                       </td>
                     </tr>

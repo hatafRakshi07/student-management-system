@@ -110,9 +110,10 @@ def get_ai_recommendations(student_id: int, db: Session) -> dict:
         recommendations.append("Keep up the excellent work!")
         recommendations.append("Consider helping peers who may be struggling.")
 
-    gemini_suggestion = _get_gemini_insight(att_pct, avg_marks, assign_pct)
-    if gemini_suggestion:
-        recommendations.append(gemini_suggestion)
+    # Try NVIDIA Nemotron first, fallback to Gemini
+    ai_suggestion = _get_nvidia_insight(att_pct, avg_marks, assign_pct) or _get_gemini_insight(att_pct, avg_marks, assign_pct)
+    if ai_suggestion:
+        recommendations.append(ai_suggestion)
 
     return {
         "student_id": student_id, "warnings": warnings,
@@ -124,9 +125,18 @@ def get_ai_recommendations(student_id: int, db: Session) -> dict:
 
 def chat_with_ai(message: str, user: User, db: Session) -> str:
     context = _build_student_context(user, db)
+    
+    # 1. First try NVIDIA Nemotron
+    nvidia_response = _query_nvidia(message, context)
+    if nvidia_response:
+        return nvidia_response
+
+    # 2. Fallback to Gemini
     gemini_response = _query_gemini(message, context)
     if gemini_response:
         return gemini_response
+
+    # 3. Fallback to rule-based
     return _rule_based_chat(message, user, db)
 
 
@@ -140,6 +150,66 @@ def _build_student_context(user: User, db: Session) -> str:
         f"Average Marks: {stats['avg_marks']}%\n"
         f"Assignment Completion: {stats['assignment_pct']}%\n"
     )
+
+
+def _query_nvidia(message: str, context: str) -> Optional[str]:
+    """Query NVIDIA NIM API (e.g. nvidia/nemotron-3.5-lightning-30b-a3b)."""
+    if not settings.nvidia_api_key:
+        return None
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            base_url="https://integrate.api.nvidia.com/v1",
+            api_key=settings.nvidia_api_key
+        )
+        prompt = (
+            f"You are an AI assistant for a College Student Management System.\n"
+            f"Student context:\n{context}\n\n"
+            f"Student asks: {message}\n\n"
+            f"Provide a helpful, friendly, and concise response (2-3 sentences max)."
+        )
+        completion = client.chat.completions.create(
+            model=settings.nvidia_model or "nvidia/nemotron-3.5-lightning-30b-a3b",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            top_p=0.95,
+            max_tokens=1024,
+        )
+        if completion.choices and completion.choices[0].message.content:
+            return completion.choices[0].message.content.strip()
+        return None
+    except Exception as e:
+        logger.warning(f"NVIDIA Nemotron chat query failed: {e}")
+        return None
+
+
+def _get_nvidia_insight(att_pct: float, avg_marks: float, assign_pct: float) -> Optional[str]:
+    """Generate study insight using NVIDIA Nemotron."""
+    if not settings.nvidia_api_key:
+        return None
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            base_url="https://integrate.api.nvidia.com/v1",
+            api_key=settings.nvidia_api_key
+        )
+        prompt = (
+            f"Student: attendance {att_pct}%, avg marks {avg_marks}%, "
+            f"assignment completion {assign_pct}%. "
+            f"Give ONE specific, highly actionable study tip in 1 clear sentence."
+        )
+        completion = client.chat.completions.create(
+            model=settings.nvidia_model or "nvidia/nemotron-3.5-lightning-30b-a3b",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.6,
+            max_tokens=256,
+        )
+        if completion.choices and completion.choices[0].message.content:
+            return completion.choices[0].message.content.strip()
+        return None
+    except Exception as e:
+        logger.warning(f"NVIDIA Nemotron insight failed: {e}")
+        return None
 
 
 def _query_gemini(message: str, context: str) -> Optional[str]:
