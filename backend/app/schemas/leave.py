@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import date, datetime
 
@@ -15,6 +15,8 @@ class LeaveReview(BaseModel):
 
 
 class LeaveOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     student_id: int
     reason: str
@@ -24,6 +26,3 @@ class LeaveOut(BaseModel):
     applied_at: datetime
     reviewed_by_id: Optional[int]
     review_remarks: Optional[str]
-
-    class Config:
-        from_attributes = True

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { GraduationCap, CheckCircle, User, Mail, Phone, BookOpen, Send } from 'lucide-react'
 
@@ -20,7 +20,7 @@ export default function OnlineAdmission() {
     e.preventDefault()
     setLoading(true)
     try {
-      const res = await axios.post('/api/admission/apply', form)
+      const res = await api.post('/admission/apply', form)
       setSubmittedApp(res.data)
       toast.success('Online Admission Application Submitted Successfully!')
     } catch {

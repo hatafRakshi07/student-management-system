@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { BookOpen, Search, Plus, CheckCircle, Clock, DollarSign, Download, AlertTriangle, QrCode } from 'lucide-react'
 
@@ -18,11 +18,10 @@ export default function AdminLibraryHub() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
       const [statsRes, booksRes, issueRes] = await Promise.all([
-        axios.get('/api/library/admin/dashboard', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/library/books', { params: { search }, headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/library/reports/issue-register', { headers: { Authorization: `Bearer ${token}` } })
+        api.get('/library/admin/dashboard'),
+        api.get('/library/books', { params: { search } }),
+        api.get('/library/reports/issue-register')
       ])
 
       setStats(statsRes.data)
@@ -47,11 +46,10 @@ export default function AdminLibraryHub() {
   const handleIssueBook = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post('/api/library/issue', {
+      const res = await api.post('/library/issue', {
         book_id: Number(selectedBookId),
         user_id: Number(targetUserId)
-      }, { headers: { Authorization: `Bearer ${token}` } })
+      })
 
       toast.success(res.data.message || 'Book issued successfully!')
       setIssueModalOpen(false)
@@ -63,10 +61,7 @@ export default function AdminLibraryHub() {
 
   const handleReturnBook = async (txnId) => {
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post(`/api/library/return/${txnId}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.post(`/library/return/${txnId}`, {})
       toast.success(res.data.message || 'Book returned successfully!')
       loadData()
     } catch {

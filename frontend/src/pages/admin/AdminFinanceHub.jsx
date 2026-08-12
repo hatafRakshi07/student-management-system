@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { DollarSign, BookOpen, Plus, FileText, CheckCircle, Scale, Download } from 'lucide-react'
 
@@ -16,10 +16,9 @@ export default function AdminFinanceHub() {
   const loadFinanceData = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
       const [tbRes, cbRes] = await Promise.all([
-        axios.get('/api/finance/reports/trial-balance', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/finance/reports/cash-book', { headers: { Authorization: `Bearer ${token}` } })
+        api.get('/finance/reports/trial-balance'),
+        api.get('/finance/reports/cash-book')
       ])
 
       setTrialBalance(tbRes.data)
@@ -38,15 +37,14 @@ export default function AdminFinanceHub() {
   const handlePostVoucher = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('access_token')
       const amt = parseFloat(amount)
-      const res = await axios.post('/api/finance/journal-entry', {
+      const res = await api.post('/finance/journal-entry', {
         narration: narration,
         line_items: [
           { ledger_id: 1, debit: amt, credit: 0 },
           { ledger_id: 3, debit: 0, credit: amt }
         ]
-      }, { headers: { Authorization: `Bearer ${token}` } })
+      })
 
       toast.success(res.data.message || 'Double-entry voucher posted successfully!')
       setVoucherModalOpen(false)

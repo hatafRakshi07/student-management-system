@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -16,6 +16,8 @@ class ExamCreate(BaseModel):
 
 
 class ExamOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     subject_id: Optional[int]
@@ -27,9 +29,6 @@ class ExamOut(BaseModel):
     class_name: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class MarkCreate(BaseModel):
     student_id: int
@@ -40,6 +39,8 @@ class MarkCreate(BaseModel):
 
 
 class MarkOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     student_id: int
     exam_id: int
@@ -47,6 +48,3 @@ class MarkOut(BaseModel):
     grade: Optional[str]
     remarks: Optional[str]
     created_at: datetime
-
-    class Config:
-        from_attributes = True

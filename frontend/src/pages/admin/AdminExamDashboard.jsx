@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { Award, Plus, Calendar, CheckCircle, AlertTriangle, Download, Printer, Users, BarChart2, ShieldAlert } from 'lucide-react'
 
@@ -11,15 +11,10 @@ export default function AdminExamDashboard() {
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('access_token')
-      const statsRes = await axios.get('/api/exams/admin/dashboard', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const statsRes = await api.get('/exams/admin/dashboard')
       setStats(statsRes.data)
 
-      const reportRes = await axios.get(`/api/exams/reports/${reportType}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const reportRes = await api.get(`/exams/reports/${reportType}`)
       setReportData(reportRes.data)
     } catch {
       toast.error('Failed to load examination analytics')

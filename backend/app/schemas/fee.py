@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -18,6 +18,8 @@ class FeeUpdate(BaseModel):
 
 
 class FeeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     student_id: int
     amount: float
@@ -28,6 +30,3 @@ class FeeOut(BaseModel):
     status: str
     transaction_id: Optional[str]
     created_at: datetime
-
-    class Config:
-        from_attributes = True

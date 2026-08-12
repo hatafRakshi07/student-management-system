@@ -24,7 +24,7 @@ export const getBaseURL = () => {
     }
   }
 
-  // 2 ─ Auto-detect from browser location (Vercel same-origin co-located app)
+  // 2 ─ Auto-detect from browser location
   if (typeof window !== 'undefined' && window.location) {
     const { hostname, protocol, port } = window.location
 
@@ -33,15 +33,15 @@ export const getBaseURL = () => {
       return 'http://localhost:8000/api'
     }
 
-    // Vercel / custom domain → use same-origin /api served natively by Vercel Python Serverless
-    if (protocol === 'https:' || protocol === 'http:') {
+    // Hosted on Render directly
+    if (hostname.includes('onrender.com')) {
       const p = port ? `:${port}` : ''
       return `${protocol}//${hostname}${p}/api`
     }
   }
 
-  // 3 ─ Hard fallback for Vercel
-  return '/api'
+  // 3 ─ Production Render backend (default for Vercel and public deployments)
+  return 'https://student-management-system-9yuf.onrender.com/api'
 }
 
 // Resolve once — never changes for the lifetime of this module
@@ -54,8 +54,18 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// ─── Request interceptor: ONLY attach auth token ─────────────────────────────
+// ─── Request interceptor: Attach auth token and normalize /api/ prefix ────────
 api.interceptors.request.use((config) => {
+  if (config.url) {
+    if (config.url.startsWith('/api/')) {
+      config.url = config.url.replace(/^\/api\//, '/')
+    } else if (config.url.startsWith('api/')) {
+      config.url = '/' + config.url.replace(/^api\//, '')
+    } else if (config.url === '/api' || config.url === 'api') {
+      config.url = '/'
+    }
+  }
+
   const token = localStorage.getItem('access_token')
   if (token) {
     config.headers = config.headers ?? {}

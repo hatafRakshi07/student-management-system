@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { Calendar, Clock, MapPin, Users, BookOpen, Plus, Download, ShieldCheck, AlertCircle } from 'lucide-react'
 
@@ -23,12 +23,11 @@ export default function AdminAcademicPlanner() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
       const [statsRes, ttRes, roomsRes, calRes] = await Promise.all([
-        axios.get('/api/academic/admin/dashboard', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/academic/timetable', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/academic/rooms', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/academic/calendar', { headers: { Authorization: `Bearer ${token}` } })
+        api.get('/academic/admin/dashboard'),
+        api.get('/academic/timetable'),
+        api.get('/academic/rooms'),
+        api.get('/academic/calendar')
       ])
 
       setStats(statsRes.data)
@@ -49,8 +48,7 @@ export default function AdminAcademicPlanner() {
   const handleCreateSlot = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post('/api/academic/timetable/slot', {
+      const res = await api.post('/academic/timetable/slot', {
         day_of_week: day,
         time_slot: timeSlot,
         class_name: className,

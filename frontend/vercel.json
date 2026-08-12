@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "destination": "https://student-management-system-9yuf.onrender.com/api/$1"
     },
     {
       "source": "/((?!api/|manifest\\.webmanifest|sw\\.js|assets/).*)",

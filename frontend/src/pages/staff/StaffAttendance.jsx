@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { Clock, LogIn, LogOut, CheckCircle, AlertTriangle, Calendar } from 'lucide-react'
 
@@ -11,10 +11,7 @@ export default function StaffAttendance() {
   const handleCheckIn = async () => {
     setCheckingIn(true)
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post('/api/attendance/staff/check-in', {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.post('/attendance/staff/check-in', {})
       toast.success(res.data.message)
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Check-in failed')
@@ -25,10 +22,7 @@ export default function StaffAttendance() {
 
   const handleCheckOut = async () => {
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post('/api/attendance/staff/check-out', {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.post('/attendance/staff/check-out', {})
       toast.success(res.data.message)
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Check-out failed')

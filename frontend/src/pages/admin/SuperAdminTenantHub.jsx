@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { Building2, Plus, Globe, ShieldCheck, DollarSign, Users, Award, Sparkles } from 'lucide-react'
 
@@ -17,10 +17,9 @@ export default function SuperAdminTenantHub() {
   const loadTenantData = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
       const [listRes, dashRes] = await Promise.all([
-        axios.get('/api/tenants/list', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/tenants/super-admin/dashboard', { headers: { Authorization: `Bearer ${token}` } })
+        api.get('/tenants/list'),
+        api.get('/tenants/super-admin/dashboard')
       ])
 
       setTenants(listRes.data.tenants || [])
@@ -39,10 +38,7 @@ export default function SuperAdminTenantHub() {
   const handleCreateTenant = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('access_token')
-      await axios.post('/api/tenants/create', { name, code, domain, plan }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      await api.post('/tenants/create', { name, code, domain, plan })
       toast.success('New Campus Tenant Provisioned Successfully!')
       setName('')
       setCode('')

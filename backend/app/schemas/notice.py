@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -10,6 +10,8 @@ class NoticeCreate(BaseModel):
 
 
 class NoticeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     description: str
@@ -17,6 +19,3 @@ class NoticeOut(BaseModel):
     created_at: datetime
     target_role: str
     is_active: int
-
-    class Config:
-        from_attributes = True

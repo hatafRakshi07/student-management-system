@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import axios from 'axios'
 import { feeAPI, studentAPI } from '../../services/api'
 import toast from 'react-hot-toast'
 import Modal from '../../components/common/Modal'

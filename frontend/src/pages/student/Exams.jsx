@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import axios from 'axios'
-import { studentAPI } from '../../services/api'
+import api, { studentAPI } from '../../services/api'
 import MarksheetModal from '../../components/exams/MarksheetModal'
 import { Award, CheckCircle, AlertTriangle, FileText, Printer, Eye, BookOpen, Layers } from 'lucide-react'
 
@@ -16,12 +15,9 @@ export default function Exams() {
 
   const openMarksheet = async (semester = 1) => {
     try {
-      const token = localStorage.getItem('access_token')
       const userObj = JSON.parse(localStorage.getItem('user') || '{}')
       const studentId = userObj.id || 535
-      const res = await axios.get(`/api/exams/marksheet/${studentId}/${semester}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.get(`/exams/marksheet/${studentId}/${semester}`)
       setMarksheetData(res.data)
       setMarksheetModalOpen(true)
     } catch {

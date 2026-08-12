@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -19,6 +19,8 @@ class AssignmentUpdate(BaseModel):
 
 
 class AssignmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     description: Optional[str]
@@ -29,9 +31,6 @@ class AssignmentOut(BaseModel):
     max_marks: float
     is_active: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class SubmissionCreate(BaseModel):
@@ -45,6 +44,8 @@ class GradeSubmission(BaseModel):
 
 
 class SubmissionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     assignment_id: int
     student_id: int
@@ -55,6 +56,3 @@ class SubmissionOut(BaseModel):
     feedback: Optional[str]
     marks_obtained: Optional[float]
     status: str
-
-    class Config:
-        from_attributes = True

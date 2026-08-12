@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 
@@ -13,6 +13,8 @@ class SubjectCreate(BaseModel):
 
 
 class SubjectOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     code: str
@@ -21,6 +23,3 @@ class SubjectOut(BaseModel):
     section: Optional[str]
     semester: Optional[int]
     credits: int
-
-    class Config:
-        from_attributes = True

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
 import toast from 'react-hot-toast'
-import { attendanceAPI } from '../../services/api'
+import api, { attendanceAPI } from '../../services/api'
 import { Calendar, Users, AlertTriangle, Download, Printer, CheckCircle, Clock, ShieldAlert, BarChart2, Briefcase } from 'lucide-react'
 
 const STATUS_COLORS = {
@@ -27,15 +26,10 @@ export default function AdminAttendance() {
 
   const loadData = async () => {
     try {
-      const token = localStorage.getItem('access_token')
-      const statsRes = await axios.get('/api/attendance/admin/dashboard', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const statsRes = await api.get('/attendance/admin/dashboard')
       setStats(statsRes.data)
 
-      const reportRes = await axios.get(`/api/attendance/reports/${reportType}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const reportRes = await api.get(`/attendance/reports/${reportType}`)
       setReportData(reportRes.data)
     } catch {
       toast.error('Failed to load admin attendance analytics')

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { Bot, Send, Mic, Sparkles, User, MessageSquare } from 'lucide-react'
 
@@ -20,11 +20,7 @@ export default function AICampusAssistant() {
     setLoading(true)
 
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post('/api/ai-assistant/chat', { query: q }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
+      const res = await api.post('/ai-assistant/chat', { query: q })
       setMessages([...newMsgs, { sender: 'ai', text: res.data.ai_response }])
     } catch {
       toast.error('AI Assistant experienced a connection issue')

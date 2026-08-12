@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import time
 
@@ -15,6 +15,8 @@ class TimetableCreate(BaseModel):
 
 
 class TimetableOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     class_name: str
     section: Optional[str]
@@ -24,6 +26,3 @@ class TimetableOut(BaseModel):
     start_time: time
     end_time: time
     room: Optional[str]
-
-    class Config:
-        from_attributes = True

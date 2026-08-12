@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import axios from 'axios'
+import api from '../../services/api'
 import { ShieldCheck, AlertOctagon, GraduationCap, CheckCircle } from 'lucide-react'
 
 export default function DocumentVerification() {
@@ -12,7 +12,7 @@ export default function DocumentVerification() {
   useEffect(() => {
     const verify = async () => {
       try {
-        const res = await axios.get(`/api/documents/verify/${docNumber}`)
+        const res = await api.get(`/documents/verify/${docNumber}`)
         setData(res.data)
       } catch {
         setError(true)

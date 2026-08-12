@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import PayslipModal from '../../components/hr/PayslipModal'
 import { Users, DollarSign, Briefcase, Download, Printer, Search, Send, FileText, CheckCircle, Clock, ShieldAlert, Plus } from 'lucide-react'
@@ -21,14 +21,12 @@ export default function AdminHRDashboard() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
       const [statsRes, staffRes, reportRes] = await Promise.all([
-        axios.get('/api/hr/admin/dashboard', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/hr/staff', {
-          params: { search, department: deptFilter, status: statusFilter },
-          headers: { Authorization: `Bearer ${token}` }
+        api.get('/hr/admin/dashboard'),
+        api.get('/hr/staff', {
+          params: { search, department: deptFilter, status: statusFilter }
         }),
-        axios.get(`/api/hr/reports/${reportType}`, { headers: { Authorization: `Bearer ${token}` } })
+        api.get(`/hr/reports/${reportType}`)
       ])
 
       setStats(statsRes.data)
@@ -53,10 +51,7 @@ export default function AdminHRDashboard() {
   const handleGeneratePayroll = async () => {
     setPayrollGenerating(true)
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post('/api/hr/payroll/generate', { month: 'August', year: 2026 }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.post('/hr/payroll/generate', { month: 'August', year: 2026 })
       toast.success(res.data.message || 'Payroll generated successfully!')
       loadData()
     } catch {
@@ -68,10 +63,7 @@ export default function AdminHRDashboard() {
 
   const openPayslip = async (txnId) => {
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.get(`/api/hr/payslip/${txnId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.get(`/hr/payslip/${txnId}`)
       setSelectedPayslip(res.data)
       setPayslipModalOpen(true)
     } catch {

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import date, datetime
 
@@ -17,12 +17,11 @@ class AttendanceBulkCreate(BaseModel):
 
 
 class AttendanceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     student_id: int
     subject_id: Optional[int]
     date: date
     status: str
     created_at: datetime
-
-    class Config:
-        from_attributes = True

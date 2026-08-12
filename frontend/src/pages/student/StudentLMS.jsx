@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { BookOpen, Video, FileText, CheckSquare, PlayCircle, HelpCircle, Award } from 'lucide-react'
 
@@ -12,10 +12,7 @@ export default function StudentLMS() {
   const loadLMSData = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.get('/api/lms/contents/1', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.get('/lms/contents/1')
       setData(res.data)
     } catch {
       toast.error('Failed to load LMS course contents')
@@ -31,11 +28,10 @@ export default function StudentLMS() {
   const handleQuizSubmit = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post('/api/lms/quiz/submit', {
+      const res = await api.post('/lms/quiz/submit', {
         quiz_id: 1,
         answers: quizAnswers
-      }, { headers: { Authorization: `Bearer ${token}` } })
+      })
 
       setQuizResult(res.data)
       toast.success('Quiz submitted successfully!')

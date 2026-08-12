@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { FileText, Download, Calendar, DollarSign, BookOpen, Layers, Users, Printer } from 'lucide-react'
 
@@ -12,10 +12,8 @@ export default function FinancialReports() {
   const fetchReport = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.get(`/api/fees/reports/${reportType}`, {
-        params: { start_date: startDate },
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await api.get(`/fees/reports/${reportType}`, {
+        params: { start_date: startDate }
       })
       setReportData(res.data)
     } catch (err) {

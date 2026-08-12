@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { TrendingUp, AlertTriangle, DollarSign, Award, ShieldAlert, Sparkles } from 'lucide-react'
 
@@ -11,10 +11,9 @@ export default function AdminPredictiveAnalytics() {
   const loadPredictions = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
       const [dropRes, feeRes] = await Promise.all([
-        axios.get('/api/analytics/predict/dropout-risk', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/analytics/predict/fee-forecast', { headers: { Authorization: `Bearer ${token}` } })
+        api.get('/analytics/predict/dropout-risk'),
+        api.get('/analytics/predict/fee-forecast')
       ])
 
       setDropoutData(dropRes.data)

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import axios from 'axios'
+import api from '../../services/api'
 import toast from 'react-hot-toast'
 import { Code, Key, Webhook, FileText, Copy, CheckCircle, ShieldAlert } from 'lucide-react'
 
@@ -12,10 +12,7 @@ export default function DeveloperApiPortal() {
   const handleGenerateKey = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post('/api/developer/api-keys/generate', { key_name: keyName }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.post('/developer/api-keys/generate', { key_name: keyName })
       setIssuedApiKey(res.data.api_key)
       toast.success('Developer API Key Issued Successfully!')
       setKeyName('')
@@ -27,10 +24,7 @@ export default function DeveloperApiPortal() {
   const handleSubscribeWebhook = async (e) => {
     e.preventDefault()
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await axios.post('/api/developer/webhooks/subscribe', { target_url: targetUrl }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.post('/developer/webhooks/subscribe', { target_url: targetUrl })
       setWebhookSecret(res.data.webhook_secret)
       toast.success('Webhook Subscription Activated!')
       setTargetUrl('')
