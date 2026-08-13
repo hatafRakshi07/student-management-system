@@ -16,19 +16,119 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Aklank" />
+    <meta name="apple-mobile-web-app-title" content="Aklank College" />
 
     <!-- SEO -->
     <meta name="description" content="Aklank Girls P.G. College, Kota – Official Student Management Portal" />
     <meta name="application-name" content="Aklank College" />
 
     <title>Aklank College | Student Portal</title>
+    <style>
+      /* Immediate hardware-accelerated splash screen before JS bundle arrives */
+      #app-pre-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(145deg, #022b5c 0%, #024794 60%, #011b3b 100%);
+        color: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        text-align: center;
+        padding: 20px;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .pre-splash-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 340px;
+        width: 100%;
+        animation: preSplashPop 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .pre-splash-logo-wrap {
+        width: 90px;
+        height: 90px;
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 10px;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(245, 158, 11, 0.4);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .pre-splash-logo-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .pre-splash-title {
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        color: #ffffff;
+        margin: 0 0 6px 0;
+      }
+      .pre-splash-sub {
+        font-size: 12px;
+        font-weight: 600;
+        color: #fcd34d;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin: 0 0 24px 0;
+        opacity: 0.95;
+      }
+      .pre-splash-progress {
+        width: 180px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        overflow: hidden;
+        position: relative;
+      }
+      .pre-splash-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 45%;
+        background: linear-gradient(90deg, #f59e0b, #fbbf24, #ffffff);
+        border-radius: 999px;
+        animation: preSplashSlide 1.2s infinite ease-in-out;
+      }
+      @keyframes preSplashPop {
+        0% { opacity: 0; transform: scale(0.92); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      @keyframes preSplashSlide {
+        0% { left: -45%; }
+        50% { left: 40%; width: 55%; }
+        100% { left: 100%; width: 30%; }
+      }
+    </style>
     <script>
       window.global = window.global || window;
     </script>
   </head>
-  <body>
-    <div id="root"></div>
+  <body style="margin: 0; padding: 0; background-color: #024794;">
+    <div id="root">
+      <div id="app-pre-splash">
+        <div class="pre-splash-card">
+          <div class="pre-splash-logo-wrap">
+            <img src="/logo.png" alt="Aklank College" width="70" height="70" />
+          </div>
+          <h1 class="pre-splash-title">Aklank College</h1>
+          <p class="pre-splash-sub">Kota · Rajasthan</p>
+          <div class="pre-splash-progress">
+            <div class="pre-splash-bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -2,18 +2,6 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 
 // ─── Compute the absolute API base URL once, at module load time ─────────────
-//
-// Priority order:
-//   1. VITE_API_URL / VITE_API_BASE_URL env var (full https?:// URL)
-//   2. Render.com hostname → known Render backend URL
-//   3. localhost / 127.0.0.1 → http://localhost:8000/api
-//   4. Any other https origin → same-origin /api  (co-located frontend+backend)
-//   5. Hard fallback
-//
-// IMPORTANT: This MUST return a full absolute http(s):// URL.
-// Axios 1.7.x internally calls `new URL(relativeUrl, baseURL)` — if baseURL
-// is empty, undefined, or relative, it throws "Failed to construct 'URL'".
-
 export const getBaseURL = () => {
   // 1 ─ Explicit env var from Vite build-time injection
   const raw = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim()
@@ -28,9 +16,14 @@ export const getBaseURL = () => {
   if (typeof window !== 'undefined' && window.location) {
     const { hostname, protocol, port } = window.location
 
-    // Local dev → Vite proxy forwards /api to localhost:8000
+    // Local dev → Vite proxy or direct FastAPI backend
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8000/api'
+    }
+
+    // Local WiFi / LAN mobile testing (e.g. 192.168.x.x, 10.x.x.x) in dev mode
+    if (import.meta.env.DEV && (hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.'))) {
+      return `http://${hostname}:8000/api`
     }
 
     // Hosted on Render directly
@@ -40,17 +33,17 @@ export const getBaseURL = () => {
     }
   }
 
-  // 3 ─ Production Render backend (default for Vercel and public deployments)
+  // 3 ─ Production Backend URL (for Vercel and production deployments)
   return 'https://student-management-system-9yuf.onrender.com/api'
 }
 
 // Resolve once — never changes for the lifetime of this module
 const BASE_URL = getBaseURL()
 
-// ─── Axios instance ───────────────────────────────────────────────────────────
+// ─── Axios instance (45s base timeout for cloud spin-up tolerance) ─────────────
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 25000,
+  timeout: 45000,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -74,12 +67,13 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// ─── Response interceptor ─────────────────────────────────────────────────────
+// ─── Response interceptor with Cold-Start Resilience ─────────────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config || {}
     const isLoginReq = config.url?.includes('/auth/login')
+    const isPingReq = config.url?.includes('/auth/ping') || config.url?.includes('/health')
 
     // Detect true offline (no WiFi, no mobile data)
     if (typeof navigator !== 'undefined' && !navigator.onLine && !config._offlineToasted) {
@@ -92,26 +86,38 @@ api.interceptors.response.use(
       !error.response ||
       error.response?.status === 500 ||
       error.response?.status === 502 ||
+      error.response?.status === 503 ||
       error.response?.status === 504 ||
       error.code === 'ECONNABORTED' ||
       error.code === 'ETIMEDOUT' ||
       error.message?.includes('Network Error') ||
       error.message?.includes('timeout')
 
+    // Don't toast for silent ping/health checks
+    if (isPingReq) {
+      return Promise.reject(error)
+    }
+
+    // Auto retry once for cold-start tolerance
     if (isServerErrorOrTimeout && !config._retried) {
       config._retried = true
-      config.timeout = 30000
-      toast.loading('Connecting to server, retrying…', { id: 'backend-retry-toast', duration: 6000 })
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      return api(config)
+      config.timeout = 65000
+      if (!isLoginReq) {
+        toast.loading('Server connecting, please wait…', { id: 'backend-retry-toast', duration: 8000 })
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+      try {
+        const res = await api(config)
+        toast.dismiss('backend-retry-toast')
+        return res
+      } catch (retryErr) {
+        toast.dismiss('backend-retry-toast')
+        return Promise.reject(retryErr)
+      }
     }
 
     if (config._retried) {
       toast.dismiss('backend-retry-toast')
-      if (!error.response) {
-        toast.error('Server unreachable. Please check your connection or try again later.', { id: 'unreachable-toast', duration: 5000 })
-        return Promise.reject(error)
-      }
     }
 
     if (error.response?.status === 401 && !isLoginReq) {
@@ -135,6 +141,48 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+// ─── Proactive Server Warmup & Keep-Alive Heartbeat ───────────────────────────
+let _warmupPromise = null
+export const warmupServer = () => {
+  if (!_warmupPromise) {
+    _warmupPromise = api.get('/auth/ping', { timeout: 40000 })
+      .then((res) => {
+        return res.data
+      })
+      .catch(() => null)
+      .finally(() => {
+        // Reset after 30s so future calls can re-test if needed
+        setTimeout(() => { _warmupPromise = null }, 30000)
+      })
+  }
+  return _warmupPromise
+}
+
+// Start immediate non-blocking warmup on script evaluation
+if (typeof window !== 'undefined') {
+  try {
+    warmupServer()
+  } catch {}
+
+  // Keep-alive heartbeat every 4 minutes (240,000 ms) so backend never sleeps during active session
+  setInterval(() => {
+    try {
+      if (document.visibilityState === 'visible') {
+        api.get('/auth/ping', { timeout: 15000 }).catch(() => {})
+      }
+    } catch {}
+  }, 240000)
+
+  // Wake up when user switches back to the tab/app
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      try {
+        api.get('/auth/ping', { timeout: 15000 }).catch(() => {})
+      } catch {}
+    }
+  })
+}
 
 // ─── API Surface ──────────────────────────────────────────────────────────────
 export const authAPI = {

@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, GraduationCap, BookOpen, ClipboardList,
   BarChart3, Bell, DollarSign, Calendar, CalendarDays, FileText, Brain, Settings,
   UserCheck, BookMarked, ChevronRight, FlaskConical, LogOut, X, Home, Package,
-  Briefcase, Library, Award, Database, TrendingUp,
+  Briefcase, Library, Award, Database, TrendingUp, Clock,
   PanelLeftClose, PanelLeftOpen, Sparkles
 } from 'lucide-react'
 

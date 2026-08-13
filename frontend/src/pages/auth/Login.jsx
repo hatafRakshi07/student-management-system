@@ -5,7 +5,7 @@ import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
 import { Eye, EyeOff, Moon, Sun, GraduationCap, BookOpen, BarChart3, MessageSquare, Award, ShieldCheck } from 'lucide-react'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
-import { authAPI } from '../../services/api'
+import { authAPI, warmupServer } from '../../services/api'
 
 const features = [
   { icon: BarChart3, label: 'AI-Powered Performance Insights' },
@@ -21,7 +21,33 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [warming] = useState(false)
+  const [serverState, setServerState] = useState('connecting') // 'connecting' | 'ready' | 'warming'
+
+  // Proactive background server warmup on mount
+  useEffect(() => {
+    let active = true
+    const timer = setTimeout(() => {
+      if (active && serverState === 'connecting') {
+        setServerState('warming')
+      }
+    }, 1500)
+
+    warmupServer()
+      .then(() => {
+        if (active) setServerState('ready')
+      })
+      .catch(() => {
+        if (active) setServerState('ready')
+      })
+      .finally(() => {
+        clearTimeout(timer)
+      })
+
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [])
 
   const validate = () => {
     if (!form.email.trim() || !form.password) return 'Please fill all fields'
@@ -60,7 +86,7 @@ export default function Login() {
 
       // Friendly messages for timeout, network, or URL errors
       if (msg.includes('timeout') || err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
-        msg = 'Server response timed out. The server may be waking up — please click Sign In again in a few seconds.'
+        msg = 'Server response timed out. The server was waking up — please click Sign In again.'
       } else if (!msg || msg.includes('Invalid URL') || msg.includes('Failed to construct') || msg.includes('Network Error')) {
         msg = 'Unable to connect to server. Please check your connection and try again.'
       }
@@ -157,8 +183,21 @@ export default function Login() {
           </div>
 
           <div className="mt-14 lg:mt-0">
-            <div className="inline-block px-3 py-1 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-semibold rounded-full mb-3 border border-primary-200/50">
-              Portal Access
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="inline-block px-3 py-1 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-semibold rounded-full border border-primary-200/50">
+                Portal Access
+              </div>
+              {serverState === 'warming' ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[11px] font-medium rounded-full border border-amber-200/60 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  Waking server…
+                </div>
+              ) : serverState === 'ready' ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-medium rounded-full border border-emerald-200/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Server Ready
+                </div>
+              ) : null}
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Welcome Back 👋</h2>
             <p className="text-gray-500 dark:text-gray-400 mt-1.5 text-sm">Sign in to your Aklank College management account</p>
@@ -212,8 +251,8 @@ export default function Login() {
               </Link>
             </div>
 
-            <button type="submit" disabled={loading || warming} className="w-full py-3 bg-gradient-to-r from-primary-700 to-primary-800 hover:from-primary-800 hover:to-primary-900 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition duration-150 flex items-center justify-center gap-2 text-sm disabled:opacity-50">
-              {warming ? 'Connecting to server…' : loading ? <LoadingSpinner size="sm" /> : 'Sign In to Portal'}
+            <button type="submit" disabled={loading} className="w-full py-3 bg-gradient-to-r from-primary-700 to-primary-800 hover:from-primary-800 hover:to-primary-900 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition duration-150 flex items-center justify-center gap-2 text-sm disabled:opacity-50">
+              {loading ? <LoadingSpinner size="sm" /> : 'Sign In to Portal'}
             </button>
           </form>
 

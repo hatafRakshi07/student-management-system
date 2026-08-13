@@ -51,7 +51,7 @@ def _init_engine():
                     db_url,
                     poolclass=NullPool,
                     future=True,
-                    connect_args={"connect_timeout": 5, "sslmode": "require"},
+                    connect_args={"connect_timeout": 15, "sslmode": "require"},
                     echo=False,
                 )
             else:
@@ -62,7 +62,7 @@ def _init_engine():
                     pool_size=5,
                     max_overflow=10,
                     future=True,
-                    connect_args={"connect_timeout": 3, "sslmode": "require"},
+                    connect_args={"connect_timeout": 15, "sslmode": "require"},
                     echo=False,
                 )
             with eng.connect() as conn:
