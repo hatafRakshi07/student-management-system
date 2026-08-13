@@ -4,7 +4,7 @@ import App from './App.jsx'
 import './index.css'
 import { registerSW } from 'virtual:pwa-register'
 
-// Bind React hook primitives to window scope to permanently guard against bare-identifier minification & cross-chunk scope issues
+// Bind React hook primitives to window scope to guard against minification scope issues
 if (typeof window !== 'undefined') {
   window.React = React
   window.useEffect = React.useEffect
@@ -16,51 +16,30 @@ if (typeof window !== 'undefined') {
   window.useReducer = React.useReducer
 }
 
-// Automatically force update Service Worker when new build is available
-const updateSW = registerSW({
-  onNeedRefresh() {
-    updateSW(true)
-  },
-  onOfflineReady() {},
-})
-
-// Auto-reload page and clear stale caches if browser tries to execute a deleted JS chunk from an old build
-// or if a service worker is caching an outdated bundle
-const _clearAndReload = () => {
-  if ('caches' in window) {
-    caches.keys().then((names) => {
-      names.forEach((name) => caches.delete(name))
+// Automatically update Service Worker when new build is available
+if ('serviceWorker' in navigator) {
+  try {
+    const updateSW = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        updateSW(true)
+      },
+      onOfflineReady() {},
     })
-  }
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      registrations.forEach((r) => r.unregister())
-    })
-  }
-  const lastReload = sessionStorage.getItem('last_stale_reload')
-  const now = Date.now()
-  if (!lastReload || now - parseInt(lastReload, 10) > 5000) {
-    sessionStorage.setItem('last_stale_reload', now.toString())
-    window.location.reload()
-  }
+  } catch {}
 }
 
-const _isStaleChunkError = (msg) =>
-  msg && (
-    msg.includes('Loading chunk') ||
-    msg.includes('Failed to fetch dynamically imported module') ||
-    msg.includes('Failed to construct') ||
-    msg.includes('Invalid URL') ||
-    msg.includes('useEffect is not defined') ||
-    msg.includes('ReferenceError')
-  )
-
+// Handle stale chunk reload gracefully if user clicks a lazy route from an old build
 window.addEventListener('error', (e) => {
-  if (_isStaleChunkError(e?.message)) _clearAndReload()
-})
-
-window.addEventListener('unhandledrejection', (e) => {
-  if (_isStaleChunkError(e?.reason?.message)) _clearAndReload()
+  const msg = e?.message || ''
+  if (msg.includes('Loading chunk') || msg.includes('Failed to fetch dynamically imported module')) {
+    const lastReload = sessionStorage.getItem('last_stale_chunk_reload')
+    const now = Date.now()
+    if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+      sessionStorage.setItem('last_stale_chunk_reload', now.toString())
+      window.location.reload()
+    }
+  }
 })
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -68,3 +47,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </React.StrictMode>,
 )
+

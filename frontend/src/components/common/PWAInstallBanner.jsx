@@ -9,32 +9,42 @@ export default function PWAInstallBanner() {
   const [isIOS, setIsIOS] = useState(false)
 
   useEffect(() => {
-    if (sessionStorage.getItem(DISMISSED_KEY)) return
+    try {
+      if (sessionStorage.getItem(DISMISSED_KEY)) return
 
-    // Detect iOS (Safari doesn't fire beforeinstallprompt)
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream
-    const standalone = window.navigator.standalone === true
-    if (ios && !standalone) {
-      setIsIOS(true)
-      setShow(true)
-      return
-    }
+      // Detect iOS (Safari doesn't fire beforeinstallprompt)
+      const ios = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream
+      const standalone = typeof window !== 'undefined' && window.navigator?.standalone === true
+      if (ios && !standalone) {
+        setIsIOS(true)
+        setShow(true)
+        return
+      }
 
-    const handler = (e) => {
-      e.preventDefault()
-      setPrompt(e)
-      setShow(true)
+      const handler = (e) => {
+        e.preventDefault()
+        setPrompt(e)
+        setShow(true)
+      }
+      window.addEventListener('beforeinstallprompt', handler)
+      return () => window.removeEventListener('beforeinstallprompt', handler)
+    } catch {
+      // Ignore errors on restricted webviews
     }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
   // Already running as installed PWA
-  if (window.matchMedia('(display-mode: standalone)').matches) return null
+  const isStandalone = typeof window !== 'undefined' && (
+    (Boolean(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) ||
+    window.navigator?.standalone === true
+  )
+  if (isStandalone) return null
   if (!show) return null
 
   const dismiss = () => {
-    sessionStorage.setItem(DISMISSED_KEY, '1')
+    try {
+      sessionStorage.setItem(DISMISSED_KEY, '1')
+    } catch {}
     setShow(false)
   }
 

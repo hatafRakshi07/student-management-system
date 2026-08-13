@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.png', 'apple-touch-icon.png', 'favicon-32.png'],
+      includeAssets: ['logo.png', 'apple-touch-icon.png', 'favicon-32.png', 'icon-192.png', 'icon-512.png', 'splash_poster.png'],
       manifest: {
         name: 'Aklank College – Student Portal',
         short_name: 'Aklank College',

@@ -7,6 +7,10 @@ class AssignmentCreate(BaseModel):
     title: str
     description: Optional[str] = None
     deadline: datetime
+    class_name: Optional[str] = "BCA"
+    semester: Optional[int] = 1
+    section: Optional[str] = "A"
+    subject_name: Optional[str] = None
     subject_id: Optional[int] = None
     max_marks: float = 100.0
 
@@ -15,6 +19,11 @@ class AssignmentUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     deadline: Optional[datetime] = None
+    class_name: Optional[str] = None
+    semester: Optional[int] = None
+    section: Optional[str] = None
+    subject_name: Optional[str] = None
+    subject_id: Optional[int] = None
     max_marks: Optional[float] = None
 
 
@@ -25,6 +34,10 @@ class AssignmentOut(BaseModel):
     title: str
     description: Optional[str]
     deadline: datetime
+    class_name: Optional[str] = "BCA"
+    semester: Optional[int] = 1
+    section: Optional[str] = "A"
+    subject_name: Optional[str] = None
     subject_id: Optional[int]
     teacher_id: int
     file_path: Optional[str]

@@ -124,19 +124,31 @@ def my_marks(current_user: User = Depends(require_student), db: Session = Depend
 
 @router.get("/assignments")
 def my_assignments(current_user: User = Depends(require_student), db: Session = Depends(get_db)):
-    assignments = db.query(Assignment).filter(Assignment.is_active == True).all()
+    assignments = db.query(Assignment).filter(Assignment.is_active == True).order_by(Assignment.id.desc()).all()
     result = []
     for a in assignments:
         sub = db.query(Submission).filter(
             Submission.assignment_id == a.id, Submission.student_id == current_user.id).first()
         result.append({
-            "id": a.id, "title": a.title, "description": a.description,
-            "deadline": a.deadline, "subject_id": a.subject_id, "max_marks": a.max_marks,
+            "id": a.id,
+            "title": a.title,
+            "description": a.description,
+            "class_name": a.class_name or (a.subject.class_name if a.subject else "BCA"),
+            "semester": a.semester or (a.subject.semester if a.subject else 1),
+            "section": a.section or (a.subject.section if a.subject else "A"),
+            "subject_name": a.subject_name or (a.subject.name if a.subject else "General Subject"),
+            "deadline": a.deadline.isoformat() if hasattr(a.deadline, 'isoformat') else str(a.deadline),
+            "subject_id": a.subject_id,
+            "max_marks": a.max_marks,
             "submitted": sub is not None,
-            "submission": {"id": sub.id,
-                           "status": sub.status.value if hasattr(sub.status, "value") else str(sub.status),
-                           "marks_obtained": sub.marks_obtained, "grade": sub.grade,
-                           "submitted_at": sub.submitted_at} if sub else None,
+            "submission": {
+                "id": sub.id,
+                "status": sub.status.value if hasattr(sub.status, "value") else str(sub.status),
+                "marks_obtained": sub.marks_obtained,
+                "grade": sub.grade,
+                "feedback": sub.feedback,
+                "submitted_at": sub.submitted_at.isoformat() if hasattr(sub.submitted_at, 'isoformat') else str(sub.submitted_at)
+            } if sub else None,
         })
     return {"assignments": result}
 

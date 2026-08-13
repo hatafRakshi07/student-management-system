@@ -17,13 +17,22 @@ router = APIRouter(prefix="/api/assignments", tags=["Assignments"])
 
 @router.get("")
 def list_assignments(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    assignments = db.query(Assignment).filter(Assignment.is_active == True).all()
+    assignments = db.query(Assignment).filter(Assignment.is_active == True).order_by(Assignment.id.desc()).all()
     return {"assignments": [
-        {"id": a.id, "title": a.title, "description": a.description,
-         "deadline": a.deadline.isoformat() if hasattr(a.deadline, 'isoformat') else str(a.deadline),
-         "subject_id": a.subject_id,
-         "teacher_id": a.teacher_id, "max_marks": a.max_marks,
-         "created_at": a.created_at.isoformat() if hasattr(a.created_at, 'isoformat') else str(a.created_at)}
+        {
+            "id": a.id,
+            "title": a.title,
+            "description": a.description,
+            "deadline": a.deadline.isoformat() if hasattr(a.deadline, 'isoformat') else str(a.deadline),
+            "class_name": a.class_name or (a.subject.class_name if a.subject else "BCA"),
+            "semester": a.semester or (a.subject.semester if a.subject else 1),
+            "section": a.section or (a.subject.section if a.subject else "A"),
+            "subject_name": a.subject_name or (a.subject.name if a.subject else "General Subject"),
+            "subject_id": a.subject_id,
+            "teacher_id": a.teacher_id,
+            "max_marks": a.max_marks,
+            "created_at": a.created_at.isoformat() if hasattr(a.created_at, 'isoformat') else str(a.created_at)
+        }
         for a in assignments]}
 
 
@@ -33,9 +42,18 @@ def create_assignment(
     current_user: User = Depends(require_teacher_or_admin),
     db: Session = Depends(get_db),
 ):
-    assignment = Assignment(title=data.title, description=data.description,
-                            deadline=data.deadline, subject_id=data.subject_id,
-                            teacher_id=current_user.id, max_marks=data.max_marks)
+    assignment = Assignment(
+        title=data.title,
+        description=data.description,
+        deadline=data.deadline,
+        class_name=data.class_name or "BCA",
+        semester=data.semester or 1,
+        section=data.section or "A",
+        subject_name=data.subject_name or "General",
+        subject_id=data.subject_id,
+        teacher_id=current_user.id,
+        max_marks=data.max_marks
+    )
     db.add(assignment)
     db.commit()
     db.refresh(assignment)

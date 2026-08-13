@@ -12,7 +12,15 @@
       "source": "/manifest.webmanifest",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Content-Type", "value": "application/manifest+json" }
+        { "key": "Content-Type", "value": "application/manifest+json" },
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/(.*\\.(png|jpg|jpeg|svg|ico|webp))",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
       ]
     },
     {
@@ -30,7 +38,7 @@
       "destination": "https://student-management-system-9yuf.onrender.com/api/:path*"
     },
     {
-      "source": "/((?!api/|manifest\\.webmanifest|sw\\.js|workbox-.*\\.js|assets/).*)",
+      "source": "/((?!api/|.*\\.[\\w]+$).*)",
       "destination": "/index.html"
     }
   ]
