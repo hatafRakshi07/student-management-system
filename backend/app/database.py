@@ -1,5 +1,3 @@
-import sys
-sys.setrecursionlimit(50000)
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base

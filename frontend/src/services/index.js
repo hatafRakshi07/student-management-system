@@ -96,11 +96,11 @@ export const notificationService = {
 }
 
 export const parentService = {
-  getChildInfo: () => api.get('/parents/child/info'),
-  getChildAttendance: () => api.get('/parents/child/attendance'),
-  getChildFees: () => api.get('/parents/child/fees'),
-  getChildMarks: () => api.get('/parents/child/marks'),
-  getChildNotifications: () => api.get('/parents/child/notifications'),
+  getChildInfo: () => api.get('/parent/dashboard'),
+  getChildAttendance: () => api.get('/parent/child/attendance'),
+  getChildFees: () => api.get('/parent/child/fees'),
+  getChildMarks: () => api.get('/parent/child/marks'),
+  getChildNotifications: () => api.get('/notifications'),
 }
 
 export const teacherService = {

@@ -6,10 +6,8 @@ import warnings
 
 _DEFAULT_SECRET = "supersecretkey-change-in-production-min32chars!!"
 
-# Default Production Supabase PostgreSQL Connection
-_DEFAULT_POSTGRES_URL = (
-    "postgresql+psycopg2://postgres:hatafrakshi@db.xiszpcerozlsrxwuasgm.supabase.co:5432/postgres"
-)
+# Default to empty — must be set via DATABASE_URL env var or .env file
+_DEFAULT_POSTGRES_URL = ""
 
 
 # Detect serverless environment (Vercel)

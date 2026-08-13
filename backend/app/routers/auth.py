@@ -207,6 +207,9 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         except Exception:
             pwd_valid = False
 
+    # Compute role string early — needed for role-specific demo auth and token creation
+    user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+
     if not pwd_valid and getattr(settings, 'enable_demo_auth', True):
         if user.phone and raw_password == user.phone.strip():
             pwd_valid = True
@@ -221,10 +224,11 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         elif pp and pp.alt_mobile and raw_password == pp.alt_mobile.strip():
             pwd_valid = True
         elif raw_password.lower() in {
-            "student@123", "student123", "student", "123456", "password",
-            "admin@123", "admin123", "admin", "teacher@123", "teacher123", "teacher",
-            "parent@123", "parent123", "parent"
+            f"{user_role}@123", f"{user_role}123", user_role,
+            "123456", "password",
         }:
+            import logging
+            logging.warning(f"DEMO AUTH used for user {user.id} ({user.email}) with role {user_role}")
             pwd_valid = True
 
     if not pwd_valid:
@@ -242,7 +246,6 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
     except Exception:
         db.rollback()
 
-    user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
     token = create_access_token({"sub": str(user.id), "role": user_role})
     refresh_token = create_refresh_token({"sub": str(user.id), "role": user_role})
     return {

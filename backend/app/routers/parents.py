@@ -430,3 +430,40 @@ def get_parent_directory_admin(
             "children": children
         })
     return {"parents": out}
+
+
+@router.get("/child/attendance")
+@router.get("/attendance")
+def get_parent_child_attendance(
+    student_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Parent Portal API for Child Attendance Records."""
+    dash = get_parent_dashboard(student_id or 0, current_user, db)
+    return dash.get("attendance", {})
+
+
+@router.get("/child/marks")
+@router.get("/marks")
+def get_parent_child_marks(
+    student_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Parent Portal API for Child Marks & Exam Performance."""
+    dash = get_parent_dashboard(student_id or 0, current_user, db)
+    return dash.get("marks", {})
+
+
+@router.get("/child/fees")
+@router.get("/fees")
+def get_parent_child_fees(
+    student_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Parent Portal API for Child Fee Summary & Receipts."""
+    dash = get_parent_dashboard(student_id or 0, current_user, db)
+    return dash.get("fee_summary", {})
+

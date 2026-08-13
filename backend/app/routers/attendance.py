@@ -431,6 +431,7 @@ def get_student_attendance_dashboard(student_id: int, current_user: User = Depen
 
 
 @router.get("/admin/dashboard")
+@router.get("/overview")
 def get_admin_attendance_dashboard(_=Depends(require_teacher_or_admin), db: Session = Depends(get_db)):
     """Admin ERP Attendance Command Center Metrics & Analytics."""
     seed_default_working_days_and_settings(db)

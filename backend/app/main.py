@@ -1,5 +1,3 @@
-import sys
-sys.setrecursionlimit(50000)
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse

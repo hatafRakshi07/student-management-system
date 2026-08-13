@@ -306,7 +306,7 @@ def get_teacher_by_id(teacher_id: int, _=Depends(require_teacher_or_admin), db: 
     }
 
 
-@router.post("", status_code=21)
+@router.post("", status_code=201)
 def create_teacher(data: Dict[str, Any], _=Depends(require_admin), db: Session = Depends(get_db)):
     """Add a new staff / faculty employee record."""
     full_name = data.get("full_name", "").strip()
