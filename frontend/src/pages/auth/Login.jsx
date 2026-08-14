@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import toast from 'react-hot-toast'
-import { Eye, EyeOff, Moon, Sun, GraduationCap, BookOpen, BarChart3, MessageSquare, Award, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, Moon, Sun, GraduationCap, BookOpen, BarChart3, MessageSquare, Award, ShieldCheck, GraduationCap as CollegeIcon } from 'lucide-react'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import { authAPI, warmupServer } from '../../services/api'
 
@@ -22,6 +22,7 @@ export default function Login() {
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
   const [serverState, setServerState] = useState('connecting') // 'connecting' | 'ready' | 'warming'
+  const [logoErr, setLogoErr] = useState(false)
 
   // Proactive background server warmup on mount
   useEffect(() => {
@@ -122,7 +123,16 @@ export default function Login() {
         <div className="relative z-10 max-w-md space-y-6">
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-glow-gold p-2 border-2 border-accent-400/50">
-              <img src="/logo.png" alt="Aklank College Kota" className="w-full h-full object-contain" />
+              {logoErr ? (
+                <span className="text-2xl font-black text-primary-700">A</span>
+              ) : (
+                <img
+                  src="/logo.png"
+                  alt="Aklank College Kota"
+                  className="w-full h-full object-contain"
+                  onError={() => setLogoErr(true)}
+                />
+              )}
             </div>
             <div>
               <span className="text-xs font-semibold tracking-[0.2em] text-accent-400 uppercase px-2.5 py-0.5 rounded-full border border-accent-400/40 bg-accent-400/10">
@@ -162,7 +172,11 @@ export default function Login() {
         <div className="absolute top-4 left-4 right-4 flex items-center justify-between lg:hidden">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm p-1 border border-gray-200">
-              <img src="/logo.png" alt="Aklank College" className="w-full h-full object-contain" />
+              {logoErr ? (
+                <span className="text-xs font-black text-primary-700">AC</span>
+              ) : (
+                <img src="/logo.png" alt="Aklank College" className="w-full h-full object-contain" onError={() => setLogoErr(true)} />
+              )}
             </div>
             <div>
               <span className="font-bold text-gray-900 dark:text-white block text-sm">Aklank College</span>

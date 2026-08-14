@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { Bell, Moon, Sun, LogOut, User, Menu } from 'lucide-react'
@@ -18,6 +18,7 @@ export default function Navbar({ onMenuClick }) {
   const { unread } = useNotifications()
   const avatarGrad = roleAvatarColors[user?.role] || 'from-primary-600 to-primary-800'
   const initials = user?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
+  const [logoErr, setLogoErr] = useState(false)
 
   return (
     <nav className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-700/80 px-3 sm:px-5 py-2.5 flex items-center justify-between sticky top-0 z-40 shadow-xs safe-top"
@@ -33,7 +34,16 @@ export default function Navbar({ onMenuClick }) {
         </button>
         <Link to="/" className="flex items-center gap-2.5 group">
           <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center p-0.5 shadow-xs border border-gray-100 group-hover:scale-105 transition">
-            <img src="/logo.png" alt="Aklank College Kota" className="w-full h-full object-contain" />
+            {logoErr ? (
+              <span className="text-[10px] font-black text-primary-700 leading-none">AC</span>
+            ) : (
+              <img
+                src="/logo.png"
+                alt="Aklank College Kota"
+                className="w-full h-full object-contain"
+                onError={() => setLogoErr(true)}
+              />
+            )}
           </div>
           <div className="hidden sm:block leading-tight">
             <span className="font-extrabold text-gray-900 dark:text-white block text-sm tracking-tight">Aklank College</span>

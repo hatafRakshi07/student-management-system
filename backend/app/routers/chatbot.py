@@ -1,15 +1,15 @@
-from fastapi import APIRouter, HTTPException, Depends
-from app.utils.auth_deps import get_current_user
-from app.utils.helpers import serialize_list
-from app.database import get_db
-from app.services.chatbot_service import process_chatbot_query
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from datetime import datetime
+from typing import Optional
+
+from app.database import get_db
+from app.models.user import User
+from app.utils.auth_deps import get_current_user
+from app.services.ai_service import chat_with_ai
 
 router = APIRouter(prefix="/api/chatbot", tags=["Chatbot"])
 
-
-from typing import Optional
 
 class ChatMessage(BaseModel):
     message: str
@@ -17,46 +17,10 @@ class ChatMessage(BaseModel):
 
 
 @router.post("/chat")
-async def chat(data: ChatMessage, current_user=Depends(get_current_user)):
-    db = get_db()
-    student_id = str(current_user["_id"])
-
-    # Store user message
-    conversation_id = data.conversation_id or f"{student_id}_{datetime.utcnow().timestamp()}"
-    await db.chat_history.insert_one({
-        "conversation_id": conversation_id,
-        "user_id": student_id,
-        "role": "user",
-        "message": data.message,
-        "timestamp": datetime.utcnow()
-    })
-
-    # Get response from chatbot service
-    response = await process_chatbot_query(data.message, current_user, db)
-
-    # Store bot response
-    await db.chat_history.insert_one({
-        "conversation_id": conversation_id,
-        "user_id": student_id,
-        "role": "assistant",
-        "message": response,
-        "timestamp": datetime.utcnow()
-    })
-
+def chat(data: ChatMessage, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Route chatbot messages through the AI service."""
+    response = chat_with_ai(data.message, current_user, db)
     return {
         "response": response,
-        "conversation_id": conversation_id
+        "conversation_id": data.conversation_id or f"{current_user.id}_chat"
     }
-
-
-@router.get("/history")
-async def get_chat_history(
-    conversation_id: str = None,
-    current_user=Depends(get_current_user)
-):
-    db = get_db()
-    query = {"user_id": str(current_user["_id"])}
-    if conversation_id:
-        query["conversation_id"] = conversation_id
-    history = await db.chat_history.find(query).sort("timestamp", 1).to_list(100)
-    return serialize_list(history)

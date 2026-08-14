@@ -1,0 +1,11 @@
+# Backend and Python dependencies (Backend is hosted on Render)
+backend/
+api/
+*.py
+requirements.txt
+runtime.txt
+student_management.db
+data sheets/
+supabase/
+.env*
+!.env.example

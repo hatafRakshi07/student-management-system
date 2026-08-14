@@ -13,12 +13,12 @@ export default function AttendanceManagement() {
   const [teacherInfo, setTeacherInfo] = useState({
     name: user?.full_name || 'Faculty Member',
     department: 'Computer Applications',
-    courses: ['BCA', 'BA', 'B.Sc (Biology)', 'B.Sc (Maths)', 'M.A. Home Science', 'M.A. Drawing & Painting'],
-    years: ['All Years', '1st Year', '2nd Year', '3rd Year']
+    courses: ['BCA'],
+    years: ['1st Year', '2nd Year', '3rd Year']
   })
 
   const [selectedCourse, setSelectedCourse] = useState('BCA')
-  const [selectedYear, setSelectedYear] = useState('All Years')
+  const [selectedYear, setSelectedYear] = useState('1st Year')
   const [selectedSection, setSelectedSection] = useState('All')
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0])
 
@@ -35,21 +35,33 @@ export default function AttendanceManagement() {
     try {
       const res = await teacherAPI.myAssignments()
       const data = res.data || {}
-      const defaultCourses = ['BCA', 'BA', 'B.Sc (Biology)', 'B.Sc (Maths)']
+
+      // Only show courses actually assigned to this teacher; default to BCA if none
+      const assignedCourses = data.courses?.length
+        ? data.courses.filter(Boolean)
+        : ['BCA']
+
+      // Filter out non-BCA courses for BCA/Computer Science teachers
+      const dept = (data.department || '').toLowerCase()
+      const isBCADept = dept.includes('computer') || dept.includes('bca')
+      const finalCourses = isBCADept
+        ? assignedCourses.filter(c => /bca/i.test(c.replace(/\./g, '').replace(/\s/g, '')))
+            .concat(['BCA']).filter((v, i, arr) => arr.indexOf(v) === i)
+        : assignedCourses
+
       setTeacherInfo({
         name: data.teacher_name || user?.full_name || 'Faculty Member',
         department: data.department || 'Computer Applications',
-        courses: data.courses?.length ? Array.from(new Set([...data.courses, 'BCA'])) : defaultCourses,
-        years: ['All Years', '1st Year', '2nd Year', '3rd Year']
+        courses: finalCourses.length ? finalCourses : ['BCA'],
+        years: ['1st Year', '2nd Year', '3rd Year']
       })
 
-      if (data.courses?.length) {
-        // Prefer the primary course that matches actual student data; default BCA for Computer Science
-        const primary = data.courses.find(c => /^bca$/i.test(c.replace(/\./g, ''))) || data.courses[0]
-        setSelectedCourse(primary)
-      }
+      // Set primary course
+      const primary = finalCourses.find(c => /bca/i.test(c.replace(/\./g, '').replace(/\s/g, ''))) || finalCourses[0] || 'BCA'
+      setSelectedCourse(primary)
     } catch {
       // Fallback defaults for teacher
+      setTeacherInfo(prev => ({ ...prev, courses: ['BCA'], years: ['1st Year', '2nd Year', '3rd Year'] }))
     }
   }
 
@@ -248,7 +260,7 @@ export default function AttendanceManagement() {
               onChange={e => setSelectedYear(e.target.value)}
               className="w-full p-2.5 rounded-xl bg-white/10 border border-white/20 text-xs font-bold text-white focus:bg-slate-900 focus:text-white"
             >
-              {['All Years', '1st Year', '2nd Year', '3rd Year'].map(y => (
+              {teacherInfo.years.map(y => (
                 <option key={y} value={y} className="bg-slate-900 text-white">{y}</option>
               ))}
             </select>
