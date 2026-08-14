@@ -75,8 +75,9 @@ def get_teacher_access_filter(current_user: User, db: Session) -> Dict[str, Any]
 
 def filter_student_query_for_teacher(query, current_user: User, db: Session):
     """
-    Applies strict SQL WHERE filtering to a SQLAlchemy query joining User & StudentProfile.
+    Applies SQL WHERE filtering to a SQLAlchemy query joining User & StudentProfile.
     Guarantees a teacher ONLY sees students in their department/assigned courses.
+    Fixed: better handling of department name mismatches (e.g. 'Computer Science' vs 'Computer Applications').
     """
     access = get_teacher_access_filter(current_user, db)
     if access["is_admin"]:
@@ -85,72 +86,79 @@ def filter_student_query_for_teacher(query, current_user: User, db: Session):
     dept = access["department"]
     courses = access["courses"]
 
-    # 1. Department Boundary (PRIMARY)
-    dept_filters = [
-        StudentProfile.department.ilike(f"%{dept}%"),
-        StudentProfile.class_name.ilike(f"%{dept}%")
-    ]
-    
-    # Department keyword fallbacks
-    dept_lower = (dept or "").lower()
-    if "computer" in dept_lower or "bca" in dept_lower:
-        dept_filters.extend([
+    # Build inclusive filter clauses based on assigned courses + department
+    filter_clauses = []
+    has_bca = False
+    has_ba = False
+    has_bsc = False
+
+    for c in courses:
+        c_low = c.lower().replace(".", "").replace(" ", "")
+        filter_clauses.append(StudentProfile.class_name.ilike(f"%{c}%"))
+        if "bca" in c_low:
+            has_bca = True
+        if c_low in ("ba", "arts") or ("ba" in c_low and "bca" not in c_low):
+            has_ba = True
+        if "bsc" in c_low:
+            has_bsc = True
+
+    # BCA / Computer Science teacher — include ALL common BCA class_name patterns
+    if has_bca:
+        filter_clauses.extend([
             StudentProfile.class_name.ilike("%bca%"),
             StudentProfile.class_name.ilike("%b.c.a%"),
+            StudentProfile.class_name.ilike("%b.c.a.%"),
             StudentProfile.department.ilike("%computer%"),
             StudentProfile.department.ilike("%applications%"),
-            StudentProfile.department.ilike("%Computer Applications%")
+            StudentProfile.department.ilike("%bca%"),
         ])
-    elif "humanities" in dept_lower or "arts" in dept_lower:
-        dept_filters.extend([
+    if has_ba:
+        filter_clauses.extend([
             StudentProfile.class_name.ilike("%b.a%"),
             StudentProfile.class_name.ilike("%ba%"),
-            StudentProfile.class_name.ilike("%arts%"),
-            StudentProfile.department.ilike("%humanities%")
         ])
-    elif "home science" in dept_lower:
-        dept_filters.extend([
-            StudentProfile.class_name.ilike("%home science%"),
-            StudentProfile.department.ilike("%home%")
-        ])
-    elif "drawing" in dept_lower:
-        dept_filters.extend([
-            StudentProfile.class_name.ilike("%drawing%"),
-            StudentProfile.department.ilike("%painting%")
-        ])
-    elif "science" in dept_lower:
-        dept_filters.extend([
+    if has_bsc:
+        filter_clauses.extend([
             StudentProfile.class_name.ilike("%b.sc%"),
             StudentProfile.class_name.ilike("%bsc%"),
-            StudentProfile.department.ilike("%science%")
         ])
 
-    query = query.filter(or_(*dept_filters))
+    # Department-level fallback
+    if dept:
+        dept_lower = dept.lower()
+        filter_clauses.append(StudentProfile.department.ilike(f"%{dept}%"))
+        if "computer" in dept_lower or "bca" in dept_lower:
+            filter_clauses.extend([
+                StudentProfile.class_name.ilike("%bca%"),
+                StudentProfile.class_name.ilike("%b.c.a%"),
+                StudentProfile.department.ilike("%computer%"),
+                StudentProfile.department.ilike("%applications%"),
+            ])
+        elif "humanities" in dept_lower or "arts" in dept_lower:
+            filter_clauses.extend([
+                StudentProfile.class_name.ilike("%b.a%"),
+                StudentProfile.class_name.ilike("%ba%"),
+                StudentProfile.department.ilike("%humanities%"),
+            ])
+        elif "home science" in dept_lower:
+            filter_clauses.extend([
+                StudentProfile.class_name.ilike("%home science%"),
+                StudentProfile.department.ilike("%home%"),
+            ])
+        elif "drawing" in dept_lower:
+            filter_clauses.extend([
+                StudentProfile.class_name.ilike("%drawing%"),
+                StudentProfile.department.ilike("%painting%"),
+            ])
+        elif "science" in dept_lower:
+            filter_clauses.extend([
+                StudentProfile.class_name.ilike("%b.sc%"),
+                StudentProfile.class_name.ilike("%bsc%"),
+                StudentProfile.department.ilike("%science%"),
+            ])
 
-    # 2. Course Boundary (If specific courses assigned)
-    if courses:
-        course_clauses = []
-        for c in courses:
-            course_clauses.append(StudentProfile.class_name.ilike(f"%{c}%"))
-            clean_c = c.replace(".", "").strip()
-            if clean_c != c:
-                course_clauses.append(StudentProfile.class_name.ilike(f"%{clean_c}%"))
-            if "bca" in c.lower():
-                course_clauses.extend([
-                    StudentProfile.class_name.ilike("%bca%"),
-                    StudentProfile.class_name.ilike("%b.c.a%")
-                ])
-            elif "ba" in c.lower():
-                course_clauses.extend([
-                    StudentProfile.class_name.ilike("%ba%"),
-                    StudentProfile.class_name.ilike("%b.a%")
-                ])
-            elif "bsc" in c.lower() or "b.sc" in c.lower():
-                course_clauses.extend([
-                    StudentProfile.class_name.ilike("%b.sc%"),
-                    StudentProfile.class_name.ilike("%bsc%")
-                ])
-        query = query.filter(or_(*course_clauses))
+    if filter_clauses:
+        query = query.filter(or_(*filter_clauses))
 
     return query
 
@@ -169,16 +177,25 @@ def verify_teacher_can_access_student(current_user: User, student_user_id: int, 
 
     access = get_teacher_access_filter(current_user, db)
     dept = (access["department"] or "").lower()
+    courses = [c.lower().replace(".", "").replace(" ", "") for c in access["courses"]]
 
     st_dept = (sp.department or "").lower()
     st_cls = (sp.class_name or "").lower()
+    st_cls_clean = st_cls.replace(".", "").replace(" ", "")
 
     authorized = False
-    if dept in st_dept or st_dept in dept:
+    # Check by department match
+    if dept and (dept in st_dept or st_dept in dept):
         authorized = True
-    elif "computer" in dept and ("bca" in st_cls or "cs" in st_cls or "computer" in st_dept):
+    # Check by course match
+    for c in courses:
+        if c and (c in st_cls_clean or st_cls_clean.startswith(c[:3])):
+            authorized = True
+            break
+    # Common keyword fallbacks
+    if "computer" in dept and ("bca" in st_cls or "cs" in st_cls or "computer" in st_dept or "applications" in st_dept):
         authorized = True
-    elif "humanities" in dept and ("b.a" in st_cls or "arts" in st_dept or "humanities" in st_dept):
+    elif "humanities" in dept and ("ba" in st_cls or "arts" in st_dept or "humanities" in st_dept):
         authorized = True
     elif "home science" in dept and ("home science" in st_cls or "home" in st_dept):
         authorized = True

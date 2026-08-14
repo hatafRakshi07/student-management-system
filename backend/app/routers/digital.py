@@ -168,25 +168,42 @@ def predict_academic_dropout_risk(db: Session = Depends(get_db)):
     Phase 37: AI Academic & Dropout Risk Prediction Model.
     Analyzes attendance < 75% and grade trends across all enrolled students.
     """
-    students = db.query(StudentProfile).limit(50).all()
+    from app.models.attendance import StudentAttendanceRecord, StudentAttendanceStatus
+    from app.models.user import User
+
+    students = db.query(StudentProfile).limit(100).all()
     risk_list = []
 
     for s in students:
-        total_att = db.query(Attendance).filter(Attendance.student_id == s.id).count()
-        pct = 85.0
+        uid = s.user_id  # Use user_id (FK to users), not StudentProfile.id
+        total_att = db.query(StudentAttendanceRecord).filter(
+            StudentAttendanceRecord.student_id == uid
+        ).count()
+
+        if total_att > 0:
+            present_att = db.query(StudentAttendanceRecord).filter(
+                StudentAttendanceRecord.student_id == uid,
+                StudentAttendanceRecord.status.in_([
+                    StudentAttendanceStatus.PRESENT, StudentAttendanceStatus.LATE
+                ])
+            ).count()
+            pct = round((present_att / total_att) * 100, 1)
+        else:
+            pct = 85.0
 
         risk_score = 0.85 if pct < 75.0 else (0.45 if pct < 85.0 else 0.10)
         risk_category = "HIGH_RISK" if risk_score > 0.7 else ("MEDIUM_RISK" if risk_score > 0.3 else "LOW_RISK")
 
         if risk_score > 0.3:
+            user_obj = db.query(User).filter(User.id == uid).first()
             risk_list.append({
-                "student_id": s.id,
+                "student_id": uid,
                 "roll_number": s.roll_number,
-                "full_name": s.user.full_name if s.user else "Student",
+                "full_name": (user_obj.full_name if user_obj else None) or s.student_name or "Student",
                 "attendance_pct": pct,
                 "dropout_risk_score": risk_score,
                 "risk_category": risk_category,
-                "recommendation": "Initiate Academic Counseling & Parent Meeting"
+                "recommendation": "Initiate Academic Counseling & Parent Meeting" if risk_score > 0.7 else "Monitor closely and encourage attendance"
             })
 
     return {
