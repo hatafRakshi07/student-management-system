@@ -66,6 +66,7 @@ const navGroups = {
     ]},
     { label: 'Finance', items: [
       { to: '/admin/fees', label: 'Fee ERP', icon: DollarSign },
+      { to: '/admin/accounting', label: 'Accounting & Ledger', icon: BookOpen },
       { to: '/admin/import', label: 'Data Import', icon: Database },
     ]},
     { label: 'Academic', items: [

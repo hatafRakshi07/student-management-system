@@ -50,6 +50,7 @@ const AdminParentHub        = lazy(() => import('./pages/admin/AdminParentHub'))
 const AdminAcademicPlanner  = lazy(() => import('./pages/admin/AdminAcademicPlanner'))
 const AdminLibraryHub       = lazy(() => import('./pages/admin/AdminLibraryHub'))
 const AdminFinanceHub       = lazy(() => import('./pages/admin/AdminFinanceHub'))
+const AdminAccountingLedger = lazy(() => import('./pages/admin/AdminAccountingLedger'))
 const AdminInventoryHub     = lazy(() => import('./pages/admin/AdminInventoryHub'))
 const AdminHostelHub        = lazy(() => import('./pages/admin/AdminHostelHub'))
 const AdminCertificateHub   = lazy(() => import('./pages/admin/AdminCertificateHub'))
@@ -134,6 +135,7 @@ function AppRoutes() {
       <Route path="/admin/academic" element={<ProtectedRoute roles={["admin"]}><AdminAcademicPlanner /></ProtectedRoute>} />
       <Route path="/admin/library" element={<ProtectedRoute roles={["admin"]}><AdminLibraryHub /></ProtectedRoute>} />
       <Route path="/admin/finance" element={<ProtectedRoute roles={["admin"]}><AdminFinanceHub /></ProtectedRoute>} />
+      <Route path="/admin/accounting" element={<ProtectedRoute roles={["admin"]}><AdminAccountingLedger /></ProtectedRoute>} />
       <Route path="/admin/inventory" element={<ProtectedRoute roles={["admin"]}><AdminInventoryHub /></ProtectedRoute>} />
       <Route path="/admin/hostel" element={<ProtectedRoute roles={["admin"]}><AdminHostelHub /></ProtectedRoute>} />
       <Route path="/admin/certificates" element={<ProtectedRoute roles={["admin"]}><AdminCertificateHub /></ProtectedRoute>} />

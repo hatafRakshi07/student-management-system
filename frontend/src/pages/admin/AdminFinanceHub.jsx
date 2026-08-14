@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
-import { DollarSign, BookOpen, Plus, FileText, CheckCircle, Scale, Download } from 'lucide-react'
+import { DollarSign, BookOpen, Plus, FileText, CheckCircle, Scale, Download, ArrowRight } from 'lucide-react'
 
 export default function AdminFinanceHub() {
   const [trialBalance, setTrialBalance] = useState(null)
@@ -65,8 +66,11 @@ export default function AdminFinanceHub() {
           <p className="page-subtitle">Double-Entry Bookkeeping, General Ledger, Cash Book & Trial Balance Generator</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link to="/admin/accounting" className="btn-secondary text-xs flex items-center gap-1.5 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 font-bold border-purple-200">
+            <BookOpen className="w-4 h-4 text-purple-600" /> Accounting & Expenses Hub <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
           <button onClick={() => setVoucherModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
-            <Plus className="w-4 h-4" /> Post Double-Entry Journal Voucher
+            <Plus className="w-4 h-4" /> Post Double-Entry Voucher
           </button>
         </div>
       </div>

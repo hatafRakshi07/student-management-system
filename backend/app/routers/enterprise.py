@@ -16,6 +16,7 @@ from app.models.enterprise import (
     LMSCourseContent, LMSQuiz, LMSQuizQuestion, LMSAssignmentSubmission, LMSStudentProgress,
     AdmissionApplication, AdmissionDocument, AdmissionMeritList,
     LedgerAccount, JournalEntry, JournalLineItem, FinancialTransaction,
+    CollegeAccount, CollegeExpense,
     ContentType, AdmissionStatus, AccountType, VoucherType
 )
 from app.utils.auth_deps import require_admin, require_teacher_or_admin, get_current_user
@@ -25,15 +26,196 @@ router = APIRouter(prefix="/api", tags=["Enterprise LMS, Admission & Finance ERP
 
 
 def seed_enterprise_defaults(db: Session):
-    """Seed initial LMS content, Chart of Accounts if empty."""
+    """Seed initial LMS content, Chart of Accounts, College Accounts and Expenses if empty."""
     if db.query(LedgerAccount).count() == 0:
         accounts = [
-            LedgerAccount(account_code="1001", account_name="Cash in Hand", account_type=AccountType.ASSET, opening_balance=50000.0, current_balance=50000.0),
-            LedgerAccount(account_code="1002", account_name="State Bank of India Account", account_type=AccountType.ASSET, opening_balance=250000.0, current_balance=250000.0),
+            LedgerAccount(account_code="1001", account_name="Cash in Hand", account_type=AccountType.ASSET, opening_balance=45000.0, current_balance=45000.0),
+            LedgerAccount(account_code="1002", account_name="SBI Main Operating Account", account_type=AccountType.ASSET, opening_balance=1250000.0, current_balance=1250000.0),
+            LedgerAccount(account_code="1003", account_name="HDFC Development Fund Account", account_type=AccountType.ASSET, opening_balance=800000.0, current_balance=800000.0),
             LedgerAccount(account_code="3001", account_name="Student Tuition Fee Revenue", account_type=AccountType.INCOME, opening_balance=0.0, current_balance=0.0),
-            LedgerAccount(account_code="4001", account_name="Faculty & Staff Salary Expense", account_type=AccountType.EXPENSE, opening_balance=0.0, current_balance=0.0),
+            LedgerAccount(account_code="4001", account_name="Faculty & Staff Salary Expense", account_type=AccountType.EXPENSE, opening_balance=0.0, current_balance=485000.0),
+            LedgerAccount(account_code="4002", account_name="Electricity & Water Utilities Expense", account_type=AccountType.EXPENSE, opening_balance=0.0, current_balance=38500.0),
+            LedgerAccount(account_code="4003", account_name="Campus Infrastructure & Repairs Expense", account_type=AccountType.EXPENSE, opening_balance=0.0, current_balance=65000.0),
+            LedgerAccount(account_code="4004", account_name="IT Infrastructure & Software Expense", account_type=AccountType.EXPENSE, opening_balance=0.0, current_balance=18500.0),
+            LedgerAccount(account_code="4005", account_name="Library Books & Subscriptions Expense", account_type=AccountType.EXPENSE, opening_balance=0.0, current_balance=24000.0),
+            LedgerAccount(account_code="4006", account_name="Lab Equipment & Chemicals Expense", account_type=AccountType.EXPENSE, opening_balance=0.0, current_balance=120000.0),
+            LedgerAccount(account_code="4007", account_name="Campus Events & Sports Expense", account_type=AccountType.EXPENSE, opening_balance=0.0, current_balance=14200.0),
+            LedgerAccount(account_code="4008", account_name="Printing & Admin Stationery Expense", account_type=AccountType.EXPENSE, opening_balance=0.0, current_balance=16800.0),
+            LedgerAccount(account_code="4009", account_name="Transport & Fuel Expense", account_type=AccountType.EXPENSE, opening_balance=0.0, current_balance=28600.0),
         ]
         db.add_all(accounts)
+        db.commit()
+
+    if db.query(CollegeAccount).count() == 0:
+        c_accounts = [
+            CollegeAccount(
+                account_name="SBI Main Operating Account",
+                account_number="38920194812",
+                bank_name="State Bank of India",
+                branch_name="Main Campus Branch",
+                ifsc_code="SBIN0004812",
+                account_type="CURRENT",
+                current_balance=1250000.0,
+                is_active=True
+            ),
+            CollegeAccount(
+                account_name="HDFC Development Fund Account",
+                account_number="5010029381928",
+                bank_name="HDFC Bank",
+                branch_name="City Centre Branch",
+                ifsc_code="HDFC0000182",
+                account_type="SAVINGS",
+                current_balance=800000.0,
+                is_active=True
+            ),
+            CollegeAccount(
+                account_name="Campus Petty Cash Counter",
+                account_number="CASH-CAMPUS-01",
+                bank_name="Cash Box",
+                branch_name="Main Admin Office",
+                ifsc_code="N/A",
+                account_type="PETTY_CASH",
+                current_balance=45000.0,
+                is_active=True
+            )
+        ]
+        db.add_all(c_accounts)
+        db.commit()
+
+    if db.query(CollegeExpense).count() == 0:
+        sbi_acc = db.query(CollegeAccount).filter(CollegeAccount.account_number == "38920194812").first()
+        hdfc_acc = db.query(CollegeAccount).filter(CollegeAccount.account_number == "5010029381928").first()
+        cash_acc = db.query(CollegeAccount).filter(CollegeAccount.account_number == "CASH-CAMPUS-01").first()
+
+        sample_expenses = [
+            CollegeExpense(
+                voucher_no="EXP-2026-001",
+                title="Faculty & Staff Monthly Payroll (July 2026)",
+                category="Salary of Staff",
+                amount=485000.0,
+                expense_date=date(2026, 7, 31),
+                payment_mode="ONLINE_TRANSFER",
+                reference_no="UTR993821048",
+                payee_name="Aklank College Staff & Faculty Payroll Account",
+                description="Disbursement of July month salaries for 45 full-time faculty & administrative staff members",
+                status="PAID",
+                college_account_id=sbi_acc.id if sbi_acc else None,
+                created_by="System Admin"
+            ),
+            CollegeExpense(
+                voucher_no="EXP-2026-002",
+                title="State Electricity Board Main Meter Bill",
+                category="Electricity & Utilities",
+                amount=38500.0,
+                expense_date=date(2026, 8, 5),
+                payment_mode="ONLINE_TRANSFER",
+                reference_no="EB-90182371",
+                payee_name="JVVNL Power Corporation Ltd",
+                description="Monthly electrical tariff payment for Academic Block A, B & Central Library",
+                status="PAID",
+                college_account_id=hdfc_acc.id if hdfc_acc else None,
+                created_by="Finance Officer"
+            ),
+            CollegeExpense(
+                voucher_no="EXP-2026-003",
+                title="Dell OptiPlex Desktops for Computer Science Lab",
+                category="Lab Equipment",
+                amount=120000.0,
+                expense_date=date(2026, 8, 1),
+                payment_mode="CHEQUE",
+                reference_no="CHQ-778219",
+                payee_name="Dell India Pvt Ltd",
+                description="Procurement of 3 high-performance desktop systems for Advanced CS Lab",
+                status="PAID",
+                college_account_id=sbi_acc.id if sbi_acc else None,
+                created_by="IT Admin"
+            ),
+            CollegeExpense(
+                voucher_no="EXP-2026-004",
+                title="High-Speed Leased Line Internet (Q3 Subscription)",
+                category="IT & Software",
+                amount=18500.0,
+                expense_date=date(2026, 8, 8),
+                payment_mode="UPI",
+                reference_no="UPI-88129038",
+                payee_name="Airtel Business Enterprise Services",
+                description="Quarterly 500 Mbps dedicated fiber internet subscription for entire campus",
+                status="PAID",
+                college_account_id=sbi_acc.id if sbi_acc else None,
+                created_by="IT Admin"
+            ),
+            CollegeExpense(
+                voucher_no="EXP-2026-005",
+                title="Library Science & Engineering Journal Subscriptions",
+                category="Library Books",
+                amount=24000.0,
+                expense_date=date(2026, 8, 2),
+                payment_mode="ONLINE_TRANSFER",
+                reference_no="NEFT-5519203",
+                payee_name="Oxford University Press & IEEE Digital",
+                description="Annual digital journal licenses and physical book prints for Central Library",
+                status="PAID",
+                college_account_id=sbi_acc.id if sbi_acc else None,
+                created_by="Librarian"
+            ),
+            CollegeExpense(
+                voucher_no="EXP-2026-006",
+                title="Annual Main Building Waterproofing & Maintenance",
+                category="Maintenance",
+                amount=65000.0,
+                expense_date=date(2026, 7, 28),
+                payment_mode="CHEQUE",
+                reference_no="CHQ-778215",
+                payee_name="Shivam Infrastructure Ltd",
+                description="Monsoon proofing and exterior wall repairs for Main Academic Block",
+                status="PAID",
+                college_account_id=hdfc_acc.id if hdfc_acc else None,
+                created_by="Estate Manager"
+            ),
+            CollegeExpense(
+                voucher_no="EXP-2026-007",
+                title="Annual Sports Meet Equipment & Championship Medals",
+                category="Campus Events",
+                amount=14200.0,
+                expense_date=date(2026, 8, 10),
+                payment_mode="CASH",
+                reference_no="CASH-REC-102",
+                payee_name="Champion Sports Accessories",
+                description="Badminton racquets, footballs, trophies and certificates for Inter-College tournament",
+                status="PAID",
+                college_account_id=cash_acc.id if cash_acc else None,
+                created_by="Sports Officer"
+            ),
+            CollegeExpense(
+                voucher_no="EXP-2026-008",
+                title="College Bus Fleet Diesel & Quarterly Maintenance",
+                category="Transport",
+                amount=28600.0,
+                expense_date=date(2026, 8, 4),
+                payment_mode="ONLINE_TRANSFER",
+                reference_no="UTR33102948",
+                payee_name="Indian Oil Fuel Station & Servicing",
+                description="Fuel refills for 4 college buses and brake overhaul for Bus #3",
+                status="PAID",
+                college_account_id=sbi_acc.id if sbi_acc else None,
+                created_by="Transport Manager"
+            ),
+            CollegeExpense(
+                voucher_no="EXP-2026-009",
+                title="Mid-Term Examination Answer Sheets & Booklet Printing",
+                category="Printing & Stationery",
+                amount=16800.0,
+                expense_date=date(2026, 8, 7),
+                payment_mode="CASH",
+                reference_no="CASH-REC-109",
+                payee_name="Universal Printing Press",
+                description="Printing 15,000 barcode-enabled answer booklets for upcoming semester exams",
+                status="PAID",
+                college_account_id=cash_acc.id if cash_acc else None,
+                created_by="Exam Cell"
+            )
+        ]
+        db.add_all(sample_expenses)
         db.commit()
 
     if db.query(LMSCourseContent).count() == 0:
@@ -53,6 +235,7 @@ def seed_enterprise_defaults(db: Session):
         q2 = LMSQuizQuestion(quiz_id=quiz.id, question_text="Which operator is used for address of a variable?", option_a="*", option_b="&", option_c="->", option_d="%", correct_option="B", marks=5.0)
         db.add_all([q1, q2])
         db.commit()
+
 
 
 # ==========================================
@@ -319,3 +502,365 @@ def get_financial_reports(report_type: str, _=Depends(require_teacher_or_admin),
         }
     else:
         raise HTTPException(status_code=400, detail="Unsupported financial report type")
+
+
+# ==========================================
+# PHASE 29 — COLLEGE ACCOUNTS & EXPENSES API
+# ==========================================
+@router.get("/finance/college-accounts")
+def get_college_accounts(_=Depends(require_teacher_or_admin), db: Session = Depends(get_db)):
+    """Retrieve all active College Bank & Cash Accounts and Total Liquidity."""
+    seed_enterprise_defaults(db)
+    accounts = db.query(CollegeAccount).all()
+    total_liquidity = sum(a.current_balance for a in accounts if a.is_active)
+
+    return {
+        "total_liquidity": total_liquidity,
+        "count": len(accounts),
+        "accounts": [{
+            "id": a.id,
+            "account_name": a.account_name,
+            "account_number": a.account_number,
+            "bank_name": a.bank_name,
+            "branch_name": a.branch_name,
+            "ifsc_code": a.ifsc_code,
+            "account_type": a.account_type,
+            "current_balance": a.current_balance,
+            "is_active": a.is_active,
+            "created_at": a.created_at.strftime("%Y-%m-%d") if a.created_at else None
+        } for a in accounts]
+    }
+
+
+@router.post("/finance/college-accounts")
+def create_college_account(payload: Dict[str, Any], _=Depends(require_admin), db: Session = Depends(get_db)):
+    """Create a new College Bank or Cash Account."""
+    account_name = payload.get("account_name")
+    account_number = payload.get("account_number")
+    bank_name = payload.get("bank_name", "State Bank of India")
+    opening_balance = float(payload.get("opening_balance", 0.0))
+
+    if not account_name or not account_number:
+        raise HTTPException(status_code=400, detail="Account Name and Account Number are required")
+
+    existing = db.query(CollegeAccount).filter(CollegeAccount.account_number == account_number).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="College Account with this Account Number already exists")
+
+    acc = CollegeAccount(
+        account_name=account_name,
+        account_number=account_number,
+        bank_name=bank_name,
+        branch_name=payload.get("branch_name", "Main Campus"),
+        ifsc_code=payload.get("ifsc_code", "SBIN0001234"),
+        account_type=payload.get("account_type", "CURRENT"),
+        current_balance=opening_balance,
+        is_active=True,
+        created_at=datetime.utcnow()
+    )
+    db.add(acc)
+
+    # Also register a corresponding Ledger Account if not present
+    ledger_code = f"10{10 + db.query(LedgerAccount).count()}"
+    l_acc = LedgerAccount(
+        account_code=ledger_code,
+        account_name=f"{account_name} ({bank_name})",
+        account_type=AccountType.ASSET,
+        opening_balance=opening_balance,
+        current_balance=opening_balance
+    )
+    db.add(l_acc)
+    db.commit()
+
+    return {"message": "College Account Created Successfully!", "id": acc.id, "account_name": acc.account_name}
+
+
+@router.get("/finance/college-expenses")
+def get_college_expenses(
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    account_id: Optional[int] = None,
+    status: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    _=Depends(require_teacher_or_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all expenses paid or pending from the college accounts with complete filtering,
+    salary breakdown, category totals, and summary analytics.
+    """
+    seed_enterprise_defaults(db)
+    query = db.query(CollegeExpense)
+
+    if search:
+        s = f"%{search}%"
+        query = query.filter(or_(
+            CollegeExpense.title.ilike(s),
+            CollegeExpense.payee_name.ilike(s),
+            CollegeExpense.voucher_no.ilike(s),
+            CollegeExpense.reference_no.ilike(s),
+            CollegeExpense.description.ilike(s)
+        ))
+
+    if category and category != "ALL":
+        query = query.filter(CollegeExpense.category == category)
+
+    if account_id:
+        query = query.filter(CollegeExpense.college_account_id == account_id)
+
+    if status and status != "ALL":
+        query = query.filter(CollegeExpense.status == status)
+
+    if start_date:
+        try:
+            sd = datetime.strptime(start_date, "%Y-%m-%d").date()
+            query = query.filter(CollegeExpense.expense_date >= sd)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            ed = datetime.strptime(end_date, "%Y-%m-%d").date()
+            query = query.filter(CollegeExpense.expense_date <= ed)
+        except ValueError:
+            pass
+
+    expenses = query.order_by(desc(CollegeExpense.expense_date), desc(CollegeExpense.id)).all()
+
+    # Summaries
+    all_exp = db.query(CollegeExpense).all()
+    total_expenses_amount = sum(e.amount for e in all_exp)
+    total_paid = sum(e.amount for e in all_exp if e.status == "PAID")
+    total_pending = sum(e.amount for e in all_exp if e.status == "PENDING")
+    salary_expenses_amount = sum(e.amount for e in all_exp if "Salary" in e.category or "Payroll" in e.title)
+
+    # Category breakdown
+    category_breakdown = {}
+    for e in all_exp:
+        cat = e.category or "Miscellaneous"
+        category_breakdown[cat] = category_breakdown.get(cat, 0.0) + e.amount
+
+    return {
+        "total_expenses_amount": total_expenses_amount,
+        "total_paid": total_paid,
+        "total_pending": total_pending,
+        "salary_expenses_amount": salary_expenses_amount,
+        "count": len(expenses),
+        "category_breakdown": category_breakdown,
+        "expenses": [{
+            "id": e.id,
+            "voucher_no": e.voucher_no,
+            "title": e.title,
+            "category": e.category,
+            "amount": e.amount,
+            "expense_date": e.expense_date.strftime("%Y-%m-%d") if e.expense_date else None,
+            "payment_mode": e.payment_mode,
+            "reference_no": e.reference_no,
+            "payee_name": e.payee_name,
+            "description": e.description,
+            "status": e.status,
+            "receipt_url": e.receipt_url,
+            "college_account_id": e.college_account_id,
+            "account_name": e.college_account.account_name if e.college_account else "General College Account",
+            "created_by": e.created_by,
+            "created_at": e.created_at.strftime("%Y-%m-%d %H:%M") if e.created_at else None
+        } for e in expenses]
+    }
+
+
+@router.post("/finance/college-expenses")
+def record_college_expense(payload: Dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Record a new expenditure from a college account.
+    Deducts balance from CollegeAccount and posts a double-entry Journal Voucher to General Ledger.
+    """
+    seed_enterprise_defaults(db)
+    title = payload.get("title")
+    category = payload.get("category", "Miscellaneous")
+    amount = float(payload.get("amount", 0.0))
+    account_id = payload.get("college_account_id")
+    payee_name = payload.get("payee_name", "Vendor / Staff")
+    payment_mode = payload.get("payment_mode", "ONLINE_TRANSFER")
+    reference_no = payload.get("reference_no", f"TXN-{uuid.uuid4().hex[:8].upper()}")
+    description = payload.get("description", "")
+    expense_date_str = payload.get("expense_date")
+
+    if not title or amount <= 0:
+        raise HTTPException(status_code=400, detail="Expense title and valid positive amount are required")
+
+    c_account = None
+    if account_id:
+        c_account = db.query(CollegeAccount).filter(CollegeAccount.id == account_id).first()
+    if not c_account:
+        c_account = db.query(CollegeAccount).filter(CollegeAccount.is_active == True).first()
+
+    if not c_account:
+        raise HTTPException(status_code=400, detail="No active college account found to disburse funds")
+
+    exp_date = date.today()
+    if expense_date_str:
+        try:
+            exp_date = datetime.strptime(expense_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
+    # Deduct from College Account balance if status is PAID
+    status = payload.get("status", "PAID")
+    if status == "PAID":
+        if c_account.current_balance < amount:
+            raise HTTPException(status_code=400, detail=f"Insufficient funds in {c_account.account_name}! Available balance: ₹{c_account.current_balance:,.2f}")
+        c_account.current_balance -= amount
+
+    v_no = f"EXP-2026-{uuid.uuid4().hex[:6].upper()}"
+    exp = CollegeExpense(
+        voucher_no=v_no,
+        title=title,
+        category=category,
+        amount=amount,
+        expense_date=exp_date,
+        payment_mode=payment_mode,
+        reference_no=reference_no,
+        payee_name=payee_name,
+        description=description,
+        status=status,
+        receipt_url=payload.get("receipt_url"),
+        college_account_id=c_account.id,
+        created_by=current_user.full_name or "Admin",
+        created_at=datetime.utcnow()
+    )
+    db.add(exp)
+
+    # Post Double-Entry Journal Entry in General Ledger
+    # Find matching Expense Ledger Account
+    expense_ledger = db.query(LedgerAccount).filter(
+        LedgerAccount.account_type == AccountType.EXPENSE,
+        LedgerAccount.account_name.ilike(f"%{category.split()[0]}%")
+    ).first()
+
+    if not expense_ledger:
+        expense_ledger = db.query(LedgerAccount).filter(LedgerAccount.account_code == "4001").first()
+
+    # Asset/Bank Ledger Account
+    bank_ledger = db.query(LedgerAccount).filter(
+        LedgerAccount.account_name.ilike(f"%{c_account.bank_name[:4]}%")
+    ).first()
+    if not bank_ledger:
+        bank_ledger = db.query(LedgerAccount).filter(LedgerAccount.account_code == "1002").first()
+
+    if expense_ledger and bank_ledger and status == "PAID":
+        journal = JournalEntry(
+            voucher_no=v_no,
+            voucher_type=VoucherType.PAYMENT,
+            entry_date=exp_date,
+            narration=f"Expense Payment for {title} ({category}) to {payee_name}",
+            total_amount=amount,
+            created_at=datetime.utcnow()
+        )
+        db.add(journal)
+        db.flush()
+
+        # Debit Expense Account, Credit Bank Account
+        db.add(JournalLineItem(journal_entry_id=journal.id, ledger_id=expense_ledger.id, debit_amount=amount, credit_amount=0.0))
+        db.add(JournalLineItem(journal_entry_id=journal.id, ledger_id=bank_ledger.id, debit_amount=0.0, credit_amount=amount))
+
+        expense_ledger.current_balance += amount
+        bank_ledger.current_balance -= amount
+
+    db.commit()
+
+    return {
+        "message": f"College Expense recorded successfully! Amount ₹{amount:,.2f} disbursed from {c_account.account_name}.",
+        "voucher_no": v_no,
+        "remaining_account_balance": c_account.current_balance
+    }
+
+
+@router.put("/finance/college-expenses/{expense_id}")
+def update_college_expense(expense_id: int, payload: Dict[str, Any], _=Depends(require_admin), db: Session = Depends(get_db)):
+    """Update expense details or mark pending expense as PAID."""
+    exp = db.query(CollegeExpense).filter(CollegeExpense.id == expense_id).first()
+    if not exp:
+        raise HTTPException(status_code=404, detail="Expense record not found")
+
+    old_status = exp.status
+    new_status = payload.get("status", old_status)
+
+    if "title" in payload:
+        exp.title = payload["title"]
+    if "category" in payload:
+        exp.category = payload["category"]
+    if "payee_name" in payload:
+        exp.payee_name = payload["payee_name"]
+    if "payment_mode" in payload:
+        exp.payment_mode = payload["payment_mode"]
+    if "reference_no" in payload:
+        exp.reference_no = payload["reference_no"]
+    if "description" in payload:
+        exp.description = payload["description"]
+
+    # If status changed from PENDING to PAID, deduct from college account balance
+    if old_status == "PENDING" and new_status == "PAID":
+        acc = db.query(CollegeAccount).filter(CollegeAccount.id == exp.college_account_id).first()
+        if acc:
+            if acc.current_balance < exp.amount:
+                raise HTTPException(status_code=400, detail=f"Insufficient balance in {acc.account_name} to pay this expense.")
+            acc.current_balance -= exp.amount
+        exp.status = "PAID"
+
+    db.commit()
+
+    return {"message": "College Expense Updated Successfully!", "id": exp.id, "status": exp.status}
+
+
+@router.delete("/finance/college-expenses/{expense_id}")
+def delete_college_expense(expense_id: int, _=Depends(require_admin), db: Session = Depends(get_db)):
+    """Delete an expense entry and refund account balance if it was PAID."""
+    exp = db.query(CollegeExpense).filter(CollegeExpense.id == expense_id).first()
+    if not exp:
+        raise HTTPException(status_code=404, detail="Expense record not found")
+
+    if exp.status == "PAID" and exp.college_account_id:
+        acc = db.query(CollegeAccount).filter(CollegeAccount.id == exp.college_account_id).first()
+        if acc:
+            acc.current_balance += exp.amount
+
+    db.delete(exp)
+    db.commit()
+
+    return {"message": "College Expense Deleted and Account Balance Restored."}
+
+
+@router.get("/finance/ledger-entries")
+def get_ledger_entries(ledger_id: Optional[int] = None, _=Depends(require_teacher_or_admin), db: Session = Depends(get_db)):
+    """Get General Ledger Account balances and detailed transaction entries."""
+    seed_enterprise_defaults(db)
+    accounts = db.query(LedgerAccount).all()
+    
+    entries_query = db.query(JournalLineItem).join(JournalEntry)
+    if ledger_id:
+        entries_query = entries_query.filter(JournalLineItem.ledger_id == ledger_id)
+        
+    line_items = entries_query.order_by(desc(JournalEntry.entry_date), desc(JournalEntry.id)).all()
+
+    return {
+        "chart_of_accounts": [{
+            "id": a.id,
+            "code": a.account_code,
+            "name": a.account_name,
+            "type": a.account_type.value if hasattr(a.account_type, "value") else str(a.account_type),
+            "opening_balance": a.opening_balance,
+            "current_balance": a.current_balance
+        } for a in accounts],
+        "entries": [{
+            "id": li.id,
+            "voucher_no": li.journal_entry.voucher_no if li.journal_entry else "N/A",
+            "entry_date": li.journal_entry.entry_date.strftime("%Y-%m-%d") if li.journal_entry and li.journal_entry.entry_date else None,
+            "narration": li.journal_entry.narration if li.journal_entry else "",
+            "account_code": li.ledger.account_code if li.ledger else "",
+            "account_name": li.ledger.account_name if li.ledger else "",
+            "debit": li.debit_amount,
+            "credit": li.credit_amount
+        } for li in line_items]
+    }
+

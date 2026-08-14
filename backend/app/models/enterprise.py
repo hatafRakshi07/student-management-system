@@ -209,3 +209,45 @@ class FinancialTransaction(Base):
     description = Column(Text, nullable=True)
     txn_date = Column(Date, nullable=False, default=date.today)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CollegeAccount(Base):
+    __tablename__ = "college_accounts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_name = Column(String(255), nullable=False, index=True)  # e.g., SBI Operating Account, HDFC Dev Fund
+    account_number = Column(String(100), unique=True, nullable=False)
+    bank_name = Column(String(255), nullable=False)  # State Bank of India, HDFC Bank, Cash Counter
+    branch_name = Column(String(255), nullable=True)
+    ifsc_code = Column(String(50), nullable=True)
+    account_type = Column(String(50), default="SAVINGS")  # SAVINGS, CURRENT, PETTY_CASH
+    current_balance = Column(Float, default=0.0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CollegeExpense(Base):
+    __tablename__ = "college_expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    voucher_no = Column(String(50), unique=True, index=True, nullable=False)
+    title = Column(String(255), nullable=False, index=True)
+    category = Column(String(100), nullable=False, index=True)  # Salary of Staff, Electricity & Utilities, Maintenance, Lab Equipment, Library Books, Campus Events, IT & Software, Printing & Stationery, Transport, Miscellaneous
+    amount = Column(Float, nullable=False)
+    expense_date = Column(Date, nullable=False, default=date.today)
+    payment_mode = Column(String(50), default="ONLINE_TRANSFER")  # ONLINE_TRANSFER, CHEQUE, CASH, UPI, DD
+    reference_no = Column(String(100), nullable=True)  # UTR / Txn ID / Cheque No
+    payee_name = Column(String(255), nullable=False)  # Staff Member / Vendor / Provider
+    description = Column(Text, nullable=True)
+    status = Column(String(50), default="PAID")  # PAID, PENDING, CANCELLED
+    receipt_url = Column(String(500), nullable=True)
+    
+    college_account_id = Column(Integer, ForeignKey("college_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    ledger_account_id = Column(Integer, ForeignKey("ledger_accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    created_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    college_account = relationship("CollegeAccount", foreign_keys=[college_account_id])
+    ledger_account = relationship("LedgerAccount", foreign_keys=[ledger_account_id])
+
