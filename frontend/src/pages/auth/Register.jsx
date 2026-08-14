@@ -11,6 +11,7 @@ export default function Register() {
     roll_number: '', department: '', class_name: '', section: '', semester: '', year: ''
   })
   const [loading, setLoading] = useState(false)
+  const [logoErr, setLogoErr] = useState(false)
 
   const validate = () => {
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -46,7 +47,11 @@ export default function Register() {
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg p-1.5">
-            <img src="/logo.png" alt="Aklank College" className="w-full h-full object-contain" />
+            {logoErr ? (
+              <span className="text-xl font-black text-primary-700">AC</span>
+            ) : (
+              <img src="/logo.png" alt="Aklank College" className="w-full h-full object-contain" onError={() => setLogoErr(true)} />
+            )}
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Student Registration</h2>
           <p className="text-gray-400 dark:text-gray-500 mt-1.5 text-sm">Aklank Girls P.G. College, Kota — Student Portal</p>
