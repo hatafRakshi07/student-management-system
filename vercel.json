@@ -2,11 +2,6 @@
   "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 25
-    }
-  },
   "headers": [
     {
       "source": "/manifest.webmanifest",
@@ -38,7 +33,7 @@
       "destination": "https://student-management-system-9yuf.onrender.com/api/:path*"
     },
     {
-      "source": "/((?!api/|.*\\.[\\w]+$).*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
