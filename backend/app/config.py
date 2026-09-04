@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     secret_key: str = _DEFAULT_SECRET
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
-    enable_demo_auth: bool = os.getenv("ENABLE_DEMO_AUTH", "true").lower() == "true"
+    enable_demo_auth: bool = os.getenv("ENABLE_DEMO_AUTH", "false").lower() == "true"
 
     @model_validator(mode="after")
     def warn_insecure_defaults(self) -> "Settings":
@@ -35,15 +35,19 @@ class Settings(BaseSettings):
                 UserWarning,
                 stacklevel=2,
             )
-        # Note: Directory creation removed from import time to prevent Read-only filesystem errors on Vercel
+        if self.enable_demo_auth:
+            warnings.warn(
+                "SECURITY WARNING: ENABLE_DEMO_AUTH is enabled. "
+                "Disable this in production environments by setting ENABLE_DEMO_AUTH=false.",
+                UserWarning,
+                stacklevel=2,
+            )
         return self
 
     def ensure_upload_dir(self) -> str:
         """
         Lazily ensures the upload directory exists on-demand before file writes.
         Catches OSError safely on read-only serverless filesystems.
-        TODO: For Vercel production, migrate file uploads to Supabase Storage / S3 / Cloudinary
-        since ephemeral /tmp files do not persist across serverless instances.
         """
         try:
             if self.upload_dir:
@@ -55,9 +59,13 @@ class Settings(BaseSettings):
     # Database: Supabase PostgreSQL
     database_url: str = os.getenv("DATABASE_URL", _DEFAULT_POSTGRES_URL)
 
-    # Supabase (optional — used by storage/realtime helpers)
-    supabase_url: str = ""
-    supabase_service_key: str = ""  # service_role key — never expose to frontend
+    # Supabase (used by cloud object storage/realtime helpers)
+    supabase_url: str = os.getenv("SUPABASE_URL", "")
+    supabase_service_key: str = os.getenv("SUPABASE_SERVICE_KEY", "")  # service_role key — never expose to frontend
+    supabase_storage_bucket: str = os.getenv("SUPABASE_STORAGE_BUCKET", "sms-uploads")
+
+    # Redis (Distributed Caching, Token Blacklisting & Rate Limiting)
+    redis_url: str = os.getenv("REDIS_URL", "")
 
     # Email (SMTP)
     smtp_host: str = "smtp.gmail.com"

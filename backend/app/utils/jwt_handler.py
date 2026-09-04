@@ -5,22 +5,48 @@ from typing import Optional
 from jose import JWTError, jwt
 from fastapi import HTTPException, status
 from app.config import settings
+from app.utils.redis_client import get_redis_client
 
-# In-memory revocation store: {jti: expiry_unix_timestamp}
-# Entries are pruned when they expire to prevent unbounded growth.
+# In-memory revocation store fallback: {jti: expiry_unix_timestamp}
 _revoked_tokens: dict[str, float] = {}
 
 
 def _cleanup_revoked() -> None:
-    """Remove expired entries from the revocation store."""
+    """Remove expired entries from the in-memory revocation store."""
     now = time.time()
     expired = [jti for jti, exp in _revoked_tokens.items() if exp < now]
     for jti in expired:
         del _revoked_tokens[jti]
 
 
+def is_token_revoked(jti: str) -> bool:
+    """Check if JTI is in Redis or in-memory revocation store."""
+    if not jti:
+        return False
+    redis_conn = get_redis_client()
+    if redis_conn:
+        try:
+            return bool(redis_conn.exists(f"revoked_token:{jti}"))
+        except Exception:
+            pass
+    return jti in _revoked_tokens
+
+
 def revoke_token(jti: str, expiry: float) -> None:
-    """Add a JTI to the revocation store until it naturally expires."""
+    """Add a JTI to Redis (with TTL) or the in-memory revocation store."""
+    if not jti:
+        return
+    now = time.time()
+    ttl = max(int(expiry - now), 1)
+
+    redis_conn = get_redis_client()
+    if redis_conn:
+        try:
+            redis_conn.setex(f"revoked_token:{jti}", ttl, "1")
+            return
+        except Exception:
+            pass
+
     _cleanup_revoked()
     _revoked_tokens[jti] = expiry
 
@@ -38,7 +64,7 @@ def verify_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         jti = payload.get("jti")
-        if jti and jti in _revoked_tokens:
+        if jti and is_token_revoked(jti):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked. Please log in again.",
@@ -72,7 +98,7 @@ def verify_refresh_token(token: str) -> dict:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         jti = payload.get("jti")
-        if jti and jti in _revoked_tokens:
+        if jti and is_token_revoked(jti):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked.",
@@ -85,5 +111,3 @@ def verify_refresh_token(token: str) -> dict:
             detail="Could not validate refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-

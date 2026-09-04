@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from typing import Optional
@@ -11,6 +11,7 @@ from app.models.exam import Mark, Exam
 from app.models.assignment import Assignment, Submission
 from app.models.fee import Fee, FeeSummary
 from app.utils.auth_deps import get_current_user, require_teacher_or_admin, require_student
+from app.services.storage_service import storage_service
 
 router = APIRouter(prefix="/api/students", tags=["Students"])
 
@@ -427,4 +428,50 @@ def delete_student(student_id: int, _=Depends(require_teacher_or_admin), db: Ses
     user.is_active = False
     db.commit()
     return {"message": "Student deactivated"}
+
+
+@router.post("/profile/avatar")
+async def upload_my_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload student avatar using Object Storage."""
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are supported")
+    content = await file.read()
+    file_url = await storage_service.upload_file(
+        file_content=content,
+        original_filename=file.filename or "avatar.jpg",
+        bucket_name="photos",
+        content_type=file.content_type
+    )
+    current_user.profile_photo = file_url
+    db.commit()
+    return {"message": "Profile photo updated", "profile_photo": file_url}
+
+
+@router.post("/{student_id}/avatar")
+async def upload_student_avatar(
+    student_id: int,
+    file: UploadFile = File(...),
+    _=Depends(require_teacher_or_admin),
+    db: Session = Depends(get_db)
+):
+    """Admin/Teacher upload student profile photo using Object Storage."""
+    user = db.query(User).filter(User.id == student_id, User.role == UserRole.student).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Student not found")
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are supported")
+    content = await file.read()
+    file_url = await storage_service.upload_file(
+        file_content=content,
+        original_filename=file.filename or "avatar.jpg",
+        bucket_name="photos",
+        content_type=file.content_type
+    )
+    user.profile_photo = file_url
+    db.commit()
+    return {"message": "Student photo updated", "profile_photo": file_url}
 

@@ -210,7 +210,7 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
     # Compute role string early — needed for role-specific demo auth and token creation
     user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
 
-    if not pwd_valid and getattr(settings, 'enable_demo_auth', True):
+    if not pwd_valid and getattr(settings, 'enable_demo_auth', False) is True:
         if user.phone and raw_password == user.phone.strip():
             pwd_valid = True
         elif sp and sp.mobile and raw_password == sp.mobile.strip():
@@ -233,7 +233,7 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
 
     if not pwd_valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Invalid password or phone number. Please try again.")
+                            detail="Invalid username or password. Please try again.")
 
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated. Contact administration.")
