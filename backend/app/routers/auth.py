@@ -199,7 +199,7 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         except Exception:
             db.rollback()
 
-    # Password validation (bcrypt hash, phone number shortcut, or demo fallback)
+    # Password validation (bcrypt hash or registered phone/mobile number)
     pwd_valid = False
     if user.hashed_password:
         try:
@@ -207,23 +207,27 @@ def login(request: Request, creds: UserLogin, db: Session = Depends(get_db)):
         except Exception:
             pwd_valid = False
 
+    # Allow student / user login using their registered mobile number as password
+    if not pwd_valid:
+        raw_phone_clean = raw_password.strip().replace(" ", "").replace("-", "").replace("+91", "")
+        def phone_match(p_val):
+            if not p_val:
+                return False
+            clean_p = str(p_val).strip().replace(" ", "").replace("-", "").replace("+91", "")
+            return bool(clean_p and (clean_p == raw_phone_clean or (len(clean_p) >= 10 and len(raw_phone_clean) >= 10 and clean_p[-10:] == raw_phone_clean[-10:])))
+
+        if phone_match(getattr(user, 'phone', None)):
+            pwd_valid = True
+        elif sp and (phone_match(getattr(sp, 'mobile', None)) or phone_match(getattr(sp, 'father_mobile', None)) or phone_match(getattr(sp, 'mother_mobile', None))):
+            pwd_valid = True
+        elif pp and (phone_match(getattr(pp, 'mobile', None)) or phone_match(getattr(pp, 'alt_mobile', None))):
+            pwd_valid = True
+
     # Compute role string early — needed for role-specific demo auth and token creation
     user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
 
     if not pwd_valid and getattr(settings, 'enable_demo_auth', False) is True:
-        if user.phone and raw_password == user.phone.strip():
-            pwd_valid = True
-        elif sp and sp.mobile and raw_password == sp.mobile.strip():
-            pwd_valid = True
-        elif sp and sp.father_mobile and raw_password == sp.father_mobile.strip():
-            pwd_valid = True
-        elif sp and sp.mother_mobile and raw_password == sp.mother_mobile.strip():
-            pwd_valid = True
-        elif pp and pp.mobile and raw_password == pp.mobile.strip():
-            pwd_valid = True
-        elif pp and pp.alt_mobile and raw_password == pp.alt_mobile.strip():
-            pwd_valid = True
-        elif raw_password.lower() in {
+        if raw_password.lower() in {
             f"{user_role}@123", f"{user_role}123", user_role,
             "123456", "password",
         }:

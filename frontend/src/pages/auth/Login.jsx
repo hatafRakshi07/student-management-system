@@ -104,11 +104,6 @@ export default function Login() {
     await executeLogin(form.email, form.password)
   }
 
-  const handleDemoLogin = async (demoEmail, demoPass) => {
-    setForm({ email: demoEmail, password: demoPass })
-    await executeLogin(demoEmail, demoPass)
-  }
-
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-gray-900 font-sans">
       {/* Left panel - branding sidebar for desktop */}
@@ -276,28 +271,6 @@ export default function Login() {
               Register here
             </Link>
           </p>
-
-          {/* Quick Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm">
-            <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2.5">Quick Demo Login Shortcuts</p>
-            <div className="grid grid-cols-4 gap-1.5">
-              {[
-                { role: 'Student', email: 'student@school.com', pass: 'student123', color: 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border-primary-200' },
-                { role: 'Teacher', email: 'teacher@school.com', pass: 'teacher123', color: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200' },
-                { role: 'Admin', email: 'admin@school.com', pass: 'admin123', color: 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200' },
-                { role: 'Parent', email: 'parent@school.com', pass: 'parent123', color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200' },
-              ].map(({ role, email, pass, color }) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => handleDemoLogin(email, pass)}
-                  className={`text-[11px] font-semibold py-1.5 px-2 rounded-lg border transition active:scale-95 text-center ${color}`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>
