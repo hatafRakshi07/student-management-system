@@ -289,7 +289,7 @@ export default function EventLedgerSection() {
         <div className="card p-4 relative overflow-hidden border-l-4 border-rose-500 bg-gradient-to-br from-rose-50/60 to-white dark:from-rose-950/20 dark:to-gray-900 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">Total Event Kharcha (Spent)</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">Total Event Expenditure</p>
               <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">
                 ₹{overallSummary.overall_spent.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
               </h3>
@@ -424,7 +424,7 @@ export default function EventLedgerSection() {
                       </div>
 
                       <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/30">
-                        <p className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase">Kharcha (Spent)</p>
+                        <p className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase">Expenditure</p>
                         <p className="font-black text-rose-700 dark:text-rose-300 text-sm mt-0.5">
                           ₹{ev.total_spent.toLocaleString('en-IN')}
                         </p>
@@ -673,7 +673,7 @@ export default function EventLedgerSection() {
 
               <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/30 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase">Total Kharcha (Expenses)</p>
+                  <p className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase">Total Expenditure</p>
                   <h3 className="text-2xl font-black text-rose-700 dark:text-rose-300 mt-0.5">
                     ₹{eventDetails.summary.total_spent.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </h3>
@@ -683,7 +683,7 @@ export default function EventLedgerSection() {
                   className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm flex items-center gap-1"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Add Kharcha
+                  Record Expense
                 </button>
               </div>
 
@@ -798,7 +798,7 @@ export default function EventLedgerSection() {
                   {itemEntryType === 'INCOME' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                 </div>
                 <h3 className="font-bold text-base text-gray-900 dark:text-white">
-                  {itemEntryType === 'INCOME' ? 'Record Amount Collection (Income)' : 'Record Event Kharcha (Expense)'}
+                  {itemEntryType === 'INCOME' ? 'Record Revenue / Collection' : 'Record Event Expenditure'}
                 </h3>
               </div>
               <button onClick={() => setAddItemModalOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -928,7 +928,7 @@ export default function EventLedgerSection() {
                     itemEntryType === 'INCOME' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'
                   }`}
                 >
-                  {submittingItem ? 'Saving...' : itemEntryType === 'INCOME' ? 'Record Collection' : 'Record Kharcha'}
+                  {submittingItem ? 'Saving...' : itemEntryType === 'INCOME' ? 'Record Revenue' : 'Record Expense'}
                 </button>
               </div>
             </form>

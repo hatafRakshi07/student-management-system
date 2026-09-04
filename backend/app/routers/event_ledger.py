@@ -225,7 +225,7 @@ def list_events(
 ):
     """
     List all college events with calculated totals:
-    Total Collected (Income), Total Spent (Kharcha), Net Balance (Surplus/Deficit).
+    Total Collected (Income), Total Expenditure (Spent), Net Balance (Surplus/Deficit).
     """
     seed_sample_events_if_empty(db)
 

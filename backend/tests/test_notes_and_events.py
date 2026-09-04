@@ -69,7 +69,7 @@ def test_notes_and_event_ledger_workflow(client, admin_auth_headers, teacher_aut
     )
     assert res_inc.status_code == 201
 
-    # 5. Add Expense (Kharcha) items: DJ & Catering
+    # 5. Add Expense items: DJ & Catering
     dj_expense = {
         "item_name": "DJ & Sound System Setup",
         "entry_type": "EXPENSE",

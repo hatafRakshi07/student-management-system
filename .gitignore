@@ -14,8 +14,10 @@ env/
 .venv/
 .env
 
-# Backend uploads
+# Backend uploads & sqlite databases
 backend/uploads/
+uploads/
+*.db
 
 # Node / React
 node_modules/

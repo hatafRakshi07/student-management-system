@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import model_validator
 from functools import lru_cache
 import os
@@ -16,6 +16,8 @@ _DEFAULT_UPLOAD_DIR = "/tmp/uploads" if _IS_VERCEL else os.path.abspath("uploads
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     app_name: str = "Student Management System"
     app_version: str = "1.0.0"
     debug: bool = False
@@ -85,10 +87,6 @@ class Settings(BaseSettings):
 
     # Frontend URL (CORS)
     frontend_url: str = "http://localhost:5173"
-
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
 
 
 @lru_cache()
