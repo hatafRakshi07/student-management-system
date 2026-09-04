@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
+import EventLedgerSection from './EventLedgerSection'
 import {
   DollarSign, BookOpen, Plus, Search, Filter, RefreshCw,
   Building2, CreditCard, ArrowUpRight, Scale, CheckCircle2,
-  AlertCircle, Trash2, Eye, Download, Users, Wallet, Layers, FileText, X
+  AlertCircle, Trash2, Eye, Download, Users, Wallet, Layers, FileText, X, Sparkles
 } from 'lucide-react'
 
 export default function AdminAccountingLedger() {
-  const [activeTab, setActiveTab] = useState('expenses') // 'expenses' | 'ledger' | 'accounts' | 'trial-balance'
+  const [activeTab, setActiveTab] = useState('events') // 'events' | 'expenses' | 'ledger' | 'accounts' | 'trial-balance'
   const [loading, setLoading] = useState(true)
 
   // Data States
@@ -313,6 +314,17 @@ export default function AdminAccountingLedger() {
       {/* ── Main Tab Navigation Bar ──────────────────────────────────── */}
       <div className="flex border-b border-gray-200 dark:border-gray-800 gap-2 overflow-x-auto">
         <button
+          onClick={() => setActiveTab('events')}
+          className={`py-3 px-4 font-bold text-sm border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
+            activeTab === 'events'
+              ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-500" /> Event & Function Ledger (Freshers, Farewell, Fests)
+        </button>
+
+        <button
           onClick={() => setActiveTab('expenses')}
           className={`py-3 px-4 font-bold text-sm border-b-2 flex items-center gap-2 transition-all whitespace-nowrap ${
             activeTab === 'expenses'
@@ -356,6 +368,11 @@ export default function AdminAccountingLedger() {
           <Scale className="w-4 h-4" /> Trial Balance Statement
         </button>
       </div>
+
+      {/* ── TAB 0: EVENT & FUNCTION FINANCIAL LEDGER ─────────────────── */}
+      {activeTab === 'events' && (
+        <EventLedgerSection />
+      )}
 
       {/* ── TAB 1: COLLEGE ACCOUNT EXPENSES ─────────────────────────── */}
       {activeTab === 'expenses' && (

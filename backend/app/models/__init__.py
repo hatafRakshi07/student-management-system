@@ -64,6 +64,8 @@ from app.models.timetable import Timetable
 from app.models.leave import Leave, LeaveRequest, LeaveStatus
 from app.models.audit import AuditLog
 from app.models.message import Message
+from app.models.notes import StudyNote
+from app.models.event_ledger import CollegeEvent, EventLedgerItem, EventType, EventStatus, EntryType
 
 __all__ = [
     "User", "UserRole",

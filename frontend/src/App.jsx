@@ -26,6 +26,7 @@ const Leaves                = lazy(() => import('./pages/student/Leaves'))
 const Timetable             = lazy(() => import('./pages/student/Timetable'))
 const Calendar              = lazy(() => import('./pages/student/Calendar'))
 const StudentLMS            = lazy(() => import('./pages/student/StudentLMS'))
+const StudentNotes          = lazy(() => import('./pages/student/StudentNotes'))
 
 const TeacherDashboard      = lazy(() => import('./pages/teacher/Dashboard'))
 const AttendanceManagement  = lazy(() => import('./pages/teacher/AttendanceManagement'))
@@ -34,6 +35,7 @@ const MarksManagement       = lazy(() => import('./pages/teacher/MarksManagement
 const TeacherAnalytics      = lazy(() => import('./pages/teacher/Analytics'))
 const PracticalManagement   = lazy(() => import('./pages/teacher/PracticalManagement'))
 const LeaveManagement       = lazy(() => import('./pages/teacher/LeaveManagement'))
+const TeacherNotesManagement = lazy(() => import('./pages/teacher/TeacherNotesManagement'))
 
 const AdminDashboard        = lazy(() => import('./pages/admin/Dashboard'))
 const StudentManagement     = lazy(() => import('./pages/admin/StudentManagement'))
@@ -101,6 +103,7 @@ function AppRoutes() {
       <Route path="/student/attendance" element={<ProtectedRoute roles={["student"]}><Attendance /></ProtectedRoute>} />
       <Route path="/student/marks" element={<ProtectedRoute roles={["student"]}><Exams /></ProtectedRoute>} />
       <Route path="/student/assignments" element={<ProtectedRoute roles={["student"]}><Assignments /></ProtectedRoute>} />
+      <Route path="/student/notes" element={<ProtectedRoute roles={["student"]}><StudentNotes /></ProtectedRoute>} />
       <Route path="/student/fees" element={<ProtectedRoute roles={["student"]}><Fees /></ProtectedRoute>} />
       <Route path="/student/ai-insights" element={<ProtectedRoute roles={["student"]}><AIInsights /></ProtectedRoute>} />
       <Route path="/student/leaves" element={<ProtectedRoute roles={["student"]}><Leaves /></ProtectedRoute>} />
@@ -112,6 +115,7 @@ function AppRoutes() {
       <Route path="/teacher" element={<ProtectedRoute roles={["teacher", "admin"]}><TeacherDashboard /></ProtectedRoute>} />
       <Route path="/teacher/attendance" element={<ProtectedRoute roles={["teacher", "admin"]}><AttendanceManagement /></ProtectedRoute>} />
       <Route path="/teacher/assignments" element={<ProtectedRoute roles={["teacher", "admin"]}><AssignmentManagement /></ProtectedRoute>} />
+      <Route path="/teacher/notes" element={<ProtectedRoute roles={["teacher", "admin"]}><TeacherNotesManagement /></ProtectedRoute>} />
       <Route path="/teacher/marks" element={<ProtectedRoute roles={["teacher", "admin"]}><MarksManagement /></ProtectedRoute>} />
       <Route path="/teacher/students" element={<ProtectedRoute roles={["teacher", "admin"]}><StudentManagement /></ProtectedRoute>} />
       <Route path="/teacher/notices" element={<ProtectedRoute roles={["teacher", "admin"]}><Notices /></ProtectedRoute>} />
