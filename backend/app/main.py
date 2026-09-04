@@ -66,6 +66,7 @@ ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
     "http://127.0.0.1:5173",
+    "https://college-erp-management1.vercel.app",
     "https://student-management-system-kappa-two.vercel.app",
     "https://student-management-system-9yuf.onrender.com",
 ]
