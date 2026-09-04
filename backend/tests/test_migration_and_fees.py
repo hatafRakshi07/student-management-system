@@ -18,10 +18,76 @@ from app.routers.analytics import admin_dashboard
 from app.migrate_aklank_data import run_migration
 
 
-@pytest.fixture(scope="module")
+from tests.conftest import TestingSessionLocal
+from app.utils.password_handler import hash_password
+
+
+@pytest.fixture
 def db_session():
-    create_tables()
-    db = SessionLocal()
+    db = TestingSessionLocal()
+    # Seed Bhavesh Mahawar and sample records if not present
+    existing_user = db.query(User).filter(User.full_name.ilike("%BHAVESH MAHAWAR%")).first()
+    if not existing_user:
+        user = User(
+            email="bhavesh@aklank.edu",
+            full_name="BHAVESH MAHAWAR",
+            hashed_password=hash_password("Pass@123"),
+            role=UserRole.student,
+        )
+        db.add(user)
+        db.flush()
+
+        profile = StudentProfile(
+            user_id=user.id,
+            roll_number="SCH-2024-001",
+            admission_no="ADM-2024-001",
+            department="Computer Science",
+            class_name="BCA",
+            section="A",
+            semester="4",
+            year="2",
+            student_name="BHAVESH MAHAWAR",
+            status="active",
+        )
+        db.add(profile)
+        db.flush()
+
+        # Academic history
+        history = StudentAcademicHistory(
+            student_id=user.id,
+            session="2024-25",
+            class_name="BCA II Year",
+            section="A",
+        )
+        db.add(history)
+
+        for s in ["2022-23", "2023-24", "2025-26"]:
+            db.add(StudentAcademicHistory(student_id=user.id, session=s, class_name="BCA", section="A"))
+
+        # Fee summary & receipt
+        summary = FeeSummary(
+            student_id=user.id,
+            total_fee=35000.0,
+            total_paid=25000.0,
+            discount=0.0,
+            pending_fee=10000.0,
+            balance=10000.0,
+            current_status="PARTIAL",
+        )
+        db.add(summary)
+
+        receipt = FeeReceipt(
+            student_id=user.id,
+            receipt_no="RCPT/2024/001",
+            voucher_no="VCH/001",
+            session="2024-25",
+            amount=25000.0,
+            receipt_date=datetime.now(),
+            payment_mode="UPI",
+        )
+        db.add(receipt)
+        db.commit()
+
     yield db
     db.close()
 

@@ -108,17 +108,21 @@ def teacher_auth_headers(client):
     from app.models.teacher import TeacherProfile
 
     db = TestingSessionLocal()
-    teacher = User(
-        email="teacher@test.com",
-        full_name="Test Teacher",
-        hashed_password=hash_password("Teacher@1234"),
-        role=UserRole.teacher,
-    )
-    db.add(teacher)
-    db.flush()
-    profile = TeacherProfile(user_id=teacher.id, employee_id="EMP-TEST", department="CS")
-    db.add(profile)
-    db.commit()
+    teacher = db.query(User).filter(User.email == "teacher@test.com").first()
+    if not teacher:
+        teacher = User(
+            email="teacher@test.com",
+            full_name="Test Teacher",
+            hashed_password=hash_password("Teacher@1234"),
+            role=UserRole.teacher,
+        )
+        db.add(teacher)
+        db.flush()
+        profile = TeacherProfile(user_id=teacher.id, employee_id="EMP-TEST", department="CS")
+        db.add(profile)
+        db.commit()
+        db.refresh(teacher)
+
     token = create_access_token({"sub": str(teacher.id), "role": "teacher"})
     db.close()
     return {"Authorization": f"Bearer {token}"}
@@ -132,17 +136,21 @@ def student_auth_headers(client):
     from app.models.student import StudentProfile
 
     db = TestingSessionLocal()
-    student = User(
-        email="student@test.com",
-        full_name="Test Student",
-        hashed_password=hash_password("Student@1234"),
-        role=UserRole.student,
-    )
-    db.add(student)
-    db.flush()
-    profile = StudentProfile(user_id=student.id, roll_number="ROLL-TEST", department="CS", class_name="B.Tech", section="A")
-    db.add(profile)
-    db.commit()
+    student = db.query(User).filter(User.email == "student@test.com").first()
+    if not student:
+        student = User(
+            email="student@test.com",
+            full_name="Test Student",
+            hashed_password=hash_password("Student@1234"),
+            role=UserRole.student,
+        )
+        db.add(student)
+        db.flush()
+        profile = StudentProfile(user_id=student.id, roll_number="ROLL-TEST", department="CS", class_name="B.Tech", section="A")
+        db.add(profile)
+        db.commit()
+        db.refresh(student)
+
     token = create_access_token({"sub": str(student.id), "role": "student"})
     db.close()
     return {"Authorization": f"Bearer {token}"}
