@@ -20,17 +20,29 @@ class Settings(BaseSettings):
 
     app_name: str = "Student Management System"
     app_version: str = "1.0.0"
-    debug: bool = False
+    environment: str = os.getenv("ENVIRONMENT", "development")
+    debug: bool = os.getenv("DEBUG", "false").lower() == "true"
 
     # Security
     secret_key: str = _DEFAULT_SECRET
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 1440  # 24 hours
+    access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours
     enable_demo_auth: bool = os.getenv("ENABLE_DEMO_AUTH", "false").lower() == "true"
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() in ("production", "prod")
 
     @model_validator(mode="after")
     def warn_insecure_defaults(self) -> "Settings":
-        if self.secret_key == _DEFAULT_SECRET:
+        if self.is_production and self.secret_key == _DEFAULT_SECRET:
+            warnings.warn(
+                "CRITICAL SECURITY WARNING: Production environment detected with default SECRET_KEY! "
+                "You must set a secure, unique SECRET_KEY in your production environment variables.",
+                UserWarning,
+                stacklevel=2,
+            )
+        elif self.secret_key == _DEFAULT_SECRET:
             warnings.warn(
                 "SECURITY: Using the default SECRET_KEY. "
                 "Set a strong SECRET_KEY in your .env file before deploying.",
@@ -70,11 +82,11 @@ class Settings(BaseSettings):
     redis_url: str = os.getenv("REDIS_URL", "")
 
     # Email (SMTP)
-    smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 587
-    smtp_username: str = ""
-    smtp_password: str = ""
-    smtp_from: str = ""
+    smtp_host: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    smtp_username: str = os.getenv("SMTP_USERNAME", "")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    smtp_from: str = os.getenv("SMTP_FROM", "")
 
     # AI Settings (NVIDIA & Gemini)
     nvidia_api_key: str = os.getenv("NVIDIA_API_KEY", "")
@@ -83,10 +95,24 @@ class Settings(BaseSettings):
 
     # File Upload — defaults to /tmp/uploads on Vercel, relative uploads in local dev
     upload_dir: str = os.getenv("UPLOAD_DIR", _DEFAULT_UPLOAD_DIR)
-    max_file_size: int = 10485760  # 10 MB
+    max_file_size: int = int(os.getenv("MAX_FILE_SIZE", str(10 * 1024 * 1024)))  # 10 MB
 
-    # Frontend URL (CORS)
-    frontend_url: str = "http://localhost:5173"
+    # Frontend URLs / Allowed CORS Origins
+    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    allowed_origins_raw: str = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,"
+        "https://college-erp-management1.vercel.app,"
+        "https://student-management-system-kappa-two.vercel.app,"
+        "https://student-management-system-9yuf.onrender.com",
+    )
+
+    def get_allowed_origins(self) -> list[str]:
+        """Return clean list of allowed CORS origins."""
+        origins = [o.strip() for o in self.allowed_origins_raw.split(",") if o.strip()]
+        if self.frontend_url and self.frontend_url not in origins:
+            origins.append(self.frontend_url)
+        return origins
 
 
 @lru_cache()

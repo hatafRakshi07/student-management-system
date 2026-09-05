@@ -62,14 +62,13 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-    "https://college-erp-management1.vercel.app",
-    "https://student-management-system-kappa-two.vercel.app",
-    "https://student-management-system-9yuf.onrender.com",
-]
+import uuid
+import time
+from datetime import datetime, timezone
+
+_START_TIME = time.time()
+
+ALLOWED_ORIGINS = settings.get_allowed_origins()
 
 from fastapi.middleware.gzip import GZipMiddleware
 
@@ -84,38 +83,54 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID", "X-Process-Time-Ms"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
 
 @app.middleware("http")
 async def add_security_headers_and_logging(request: Request, call_next):
-    import time
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    request.state.request_id = request_id
+
     start_time = time.time()
     response = await call_next(request)
     process_time = (time.time() - start_time) * 1000
-    
-    # Security headers
+
+    # Production security headers
+    response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
     response.headers["X-Process-Time-Ms"] = f"{process_time:.2f}"
+
+    if settings.is_production or request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+
     return response
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     import logging
-    logging.error(f"Unhandled Exception on {request.method} {request.url.path}: {exc}", exc_info=True)
-    body = (
-        {"detail": "Internal Server Error", "error": str(exc)}
-        if settings.debug
-        else {"detail": "An internal server error occurred. Please contact system administration."}
+    request_id = getattr(getattr(request, "state", None), "request_id", "unknown")
+    logging.error(
+        f"[Request-ID: {request_id}] Unhandled Exception on {request.method} {request.url.path}: {exc}",
+        exc_info=True,
     )
+    body = {
+        "detail": "Internal Server Error" if settings.debug else "An internal server error occurred. Please contact system administration.",
+        "request_id": request_id,
+    }
+    if settings.debug:
+        body["error"] = str(exc)
+
     res = JSONResponse(status_code=500, content=body)
     res.headers["Access-Control-Allow-Origin"] = "*"
     res.headers["Access-Control-Allow-Credentials"] = "true"
+    res.headers["X-Request-ID"] = request_id
     return res
 
 
@@ -155,16 +170,30 @@ app.include_router(event_ledger.router)
 # inventory routes are already registered by expansion.router (/api/inventory/*)
 
 
-
 @app.api_route("/", methods=["GET", "HEAD"])
 def root():
-    return {"name": settings.app_name, "version": settings.app_version,
-            "status": "running", "docs": "/docs"}
+    return {
+        "name": settings.app_name,
+        "version": settings.app_version,
+        "environment": settings.environment,
+        "status": "running",
+        "docs": "/docs",
+    }
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health():
-    return {"status": "ok"}
+    db_ok = check_connection()
+    uptime_sec = round(time.time() - _START_TIME, 2)
+    return {
+        "status": "healthy" if db_ok else "degraded",
+        "database": "connected" if db_ok else "disconnected",
+        "version": settings.app_version,
+        "environment": settings.environment,
+        "uptime_seconds": uptime_sec,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 @app.get("/favicon.ico", include_in_schema=False)

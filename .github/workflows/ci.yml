@@ -9,14 +9,19 @@ on:
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11']
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
 
       - name: Install Dependencies
         run: |
@@ -33,14 +38,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js 20
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: frontend/package.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install Frontend Dependencies
         run: |
@@ -52,13 +57,21 @@ jobs:
           cd frontend
           npm run build
 
-  docker-build:
+  docker-verification:
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-build]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Verify Docker Compose Build
+      - name: Verify Docker Compose Configuration
         run: |
           docker compose config
+
+      - name: Build Docker Backend Image
+        run: |
+          docker build -t college-erp-backend:latest ./backend
+
+      - name: Build Docker Frontend Image
+        run: |
+          docker build -t college-erp-frontend:latest ./frontend

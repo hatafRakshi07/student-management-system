@@ -6,29 +6,75 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: college_erp_backend
-    restart: always
+    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres.tzahxmdwxfgxfmwnaznd:Aklank2026!Password@aws-0-ap-south-1.pooler.supabase.com:6543/postgres
-      - SECRET_KEY=aklank_erp_super_secret_jwt_key_2026_enterprise_v10
-      - ENVIRONMENT=production
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres.tzahxmdwxfgxfmwnaznd:Aklank2026!Password@aws-0-ap-south-1.pooler.supabase.com:6543/postgres}
+      - SECRET_KEY=${SECRET_KEY:-aklank_erp_super_secret_jwt_key_2026_enterprise_v10}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost,http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,https://college-erp-management1.vercel.app,https://student-management-system-kappa-two.vercel.app,https://student-management-system-9yuf.onrender.com}
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - college_erp_network
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: college_erp_frontend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-80}:80"
+    networks:
+      - college_erp_network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   redis:
     image: redis:7-alpine
     container_name: college_erp_redis
-    restart: always
+    restart: unless-stopped
+    command: redis-server --appendonly yes
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - college_erp_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
-  nginx:
-    image: nginx:alpine
-    container_name: college_erp_nginx
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - backend
+volumes:
+  backend_uploads:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  college_erp_network:
+    driver: bridge
