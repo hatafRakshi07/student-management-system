@@ -18,6 +18,7 @@ class ChatMessage(BaseModel):
 
 
 @router.get("/performance/{student_id}")
+@router.get("/performance-prediction/{student_id}")
 def performance_prediction(
     student_id: int,
     current_user: User = Depends(get_current_user),

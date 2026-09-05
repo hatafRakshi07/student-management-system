@@ -119,18 +119,21 @@ def query_ai_campus_assistant(payload: AIChatRequest, current_user: User = Depen
     if not student:
         student = db.query(StudentProfile).first()
 
+    stud_uid = student.user_id if student else user_id
+    stud_id = student.id if student else user_id
+
     intent = "GENERAL_QUERY"
     response_text = ""
 
     if "fee" in query or "dues" in query or "balance" in query:
         intent = "FEE_INQUIRY"
-        fee_sum = db.query(FeeSummary).filter(FeeSummary.student_id == student.user_id).first()
+        fee_sum = db.query(FeeSummary).filter(FeeSummary.student_id == stud_uid).first()
         pending = fee_sum.pending_fee if fee_sum else 0.0
         response_text = f"Hello {current_user.full_name}, your current outstanding fee balance is Rs. {pending:,.2f}. You can pay online via the Parent or Student Fee Portal."
 
     elif "attendance" in query or "present" in query or "absent" in query:
         intent = "ATTENDANCE_INQUIRY"
-        total_att = db.query(Attendance).filter(Attendance.student_id == student.id).count()
+        total_att = db.query(Attendance).filter(Attendance.student_id == stud_id).count()
         pct = 92.5
         status_msg = "Your attendance is in good standing (above 75%)." if pct >= 75.0 else "Warning: Your attendance is below 75% defaulter cutoff!"
         response_text = f"Your overall attendance is {pct}%. {status_msg}"
@@ -252,9 +255,12 @@ def predict_placement_readiness(student_id: int, db: Session = Depends(get_db)):
     cgpa = 8.4
     prob_pct = 88.5
 
+    sid = student.id if student else student_id
+    st_name = (student.user.full_name if (student and student.user) else None) or (student.student_name if student else "Student")
+
     return {
-        "student_id": student.id,
-        "student_name": student.user.full_name if student.user else "Student",
+        "student_id": sid,
+        "student_name": st_name,
         "cgpa": cgpa,
         "placement_probability_index": prob_pct,
         "readiness_status": "HIGHLY_PLACABLE",
